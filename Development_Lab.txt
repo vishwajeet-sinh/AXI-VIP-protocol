@@ -1,0 +1,73 @@
+
+Unit : AXI DEVELOPMENT LAB
+
+
+Concepts:
+
+AXI VIP Development
+Template environment coding
+Adding new tests
+Steps:
+
+Setup AXI VIP Template environment
+Top(module) -> axi_tb -> axi_env -> axi_bfm, mon, gen, cov
+Each class has ‘run’ task
+Axi_slave.sv
+Coded as SV model (using class axi_bfm_slave to model slave behavior)
+Instantiate axi_bfm_slave in axi_env
+Connect using vif.axi_slave_modport
+This is called slave VIP (axi_bfm_slave + axi_monitor)
+Coded as a module (using axi_slave module to model slave behavior)
+Instantiate axi_slave in top module
+Connect using ports
+Top module
+Program block
+Rst, clk
+Generate clk, rst
+Axi_intf instantiation
+Pass vif handle to sub components (Try both in 2 different implementations)
+Using function new argument
+Using static declaration
+Same for testname, mailbox
+Pass testname, mailbox as task/function argument
+Using static declaration
+Develop tests targeting AXI features
+Burst_len  (test_burst_len)
+Burst_type  (test_burst_type)
+Out of order  (test_out_of_order)
+Multiple writes  (test_multiple_writes)
+Multiple reads (test_multiple_reads)
+Write-reads  (test_write_reads)
+Write to fixed addr    (test_write_fixed_addr)
+Read to a fixed addr
+Write-to-fixed-addr, read, compare
+Locked types
+Protection types
+Code axi_gen.sv (Try below 2 cases to implement tests)
+Case statement in run method to create different tests
+Implement scenario in case statement
+Write another example to implement tests in a separate SV file, instantiate test class in generator and call test_case.run method to run scenario
+Implement scenario in separate SV files, run method
+BFM coding
+BFM should support both master and slave
+Master_slave_f = 1 => master mode
+= 0 => slave mode
+If used in Master mode should drive transaction
+Get transaction
+Call drive_tx(tx)
+Write_addr, write_data, write_resp
+Read_addr, read_data
+If used in slave mode should respond to master request
+Monitor coding
+Run method to monitor each channel handshaking signals
+Collect tx in various phases(addr phase, data phase, resp phase)
+Once tx collection is complete, put tx in mailbox connecting mon2cov
+Coverage coding
+Get tx from mon2cov mailbox, sample axi_cg
+Write axi_cg with coverage on various fields
+Lock_type
+Burst_type
+Burst_len
+Burst_size
+Prot_type
+ 

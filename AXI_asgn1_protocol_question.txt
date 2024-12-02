@@ -1,0 +1,83 @@
+
+Unit : AXI_ASGN1_Protocol
+
+
+AXI protocol questions
+
+Draw AXI Design architecture with 3 Master, 1 Interconnect and 4 slaves
+Explain handshaking in AXI Protocol
+Different phases in AXI Write transaction
+Different phases in AXI Read transaction
+Using above diagram explain
+difference between Normal, Exclusive and Locked transfers
+difference between Out-of-order, interleaved, overlapping txs
+difference between cacheble, bufferable transactions
+difference between burst transaction and single transaction
+difference between normal, privileged and secure transactions
+For below requirement, draw timing diagram
+AWADDR = 16’h1000, AWLEN=5, AWSIZE=2, AWBURST=INCR
+AWADDR = 16’h1000, AWLEN=5, AWSIZE=2, AWBURST=WRAP
+AWADDR = 16’h1003, AWLEN=5, AWSIZE=2, AWBURST=WRAP
+AWADDR = 16’h1007, AWLEN=5, AWSIZE=2, AWBURST=INCR
+Explain difference between aligned and unaligned transfers using memory mapping diagram
+Explain significance of Strobe in AXI Write channel
+Explain why we need wlast and rlast when burst len is already indicating number of transfer
+For above txs in #3, write which all locations in memory are accessed
+Explain 5 different channels in AXI
+What is the significance of ID in each channel, how it helps with out-of-order, overlapping, interleaved transfers
+Explain difference between SLVERR and DECERR response
+List down various features AXI protocol supports
+Burst
+Out of order, overlapping, interleaved
+Draw AXI Design architecture with 3 Master, 1 Interconnect and 4 slaves
+How AXI is different from AHB, APB
+Write 5 important differences
+Explain handshaking in AXI Protocol
+Different phases in AXI Write transaction
+Different phases in AXI Read transaction
+Explain the signal decoding for below AXI ports.
+AWLEN
+AWSIZE
+AWBURST
+AWCACHE
+AWLOCK
+AWPROT
+BRESP
+What are narrow transfers?
+Using above diagram explain (3 master, 4 slaves and an interconnect)
+difference between Normal, Exclusive and Locked transfers
+difference between Out-of-order, interleaved, overlapping transactions.
+difference between cacheble, bufferable transactions
+difference between burst transaction and single transaction
+difference between normal, privileged and secure transactions
+AXI interconnect with 3 masters connected and two of them doing transfers with same ID to the same slave, how interconnect makes sure that response from the slave is routed to correct master?
+For below requirement, draw timing diagram
+AWADDR = 16’h1000, AWLEN=5, AWSIZE=2, AWBURST=INCR
+AWADDR = 16’h1000, AWLEN=5, AWSIZE=2, AWBURST=WRAP
+AWADDR = 16’h1003, AWLEN=5, AWSIZE=2, AWBURST=WRAP
+AWADDR = 16’h1007, AWLEN=5, AWSIZE=2, AWBURST=INCR
+In above cases, which all locations in memory are accessed.
+Explain difference between aligned and unaligned transfers using memory mapping diagram
+Explain significance of Strobe in AXI Write channel
+What is the need for WSTRB, when master does the automatic data alignment?
+Explain why we need wlast and rlast when burst len is already indicating number of transfers
+Explain 5 different channels in AXI
+What is the significance of ID in each channel, how it helps with out-of-order, overlapping, interleaved transfers?
+Explain Out of order transactions using a timing diagram.
+Explain Overlapping transactions using a timing diagram.
+Explain Interleaved transactions using a timing diagram.
+Explain difference between SLVERR and DECERR response
+List down various features AXI protocol supports
+Burst
+Out of order, overlapping, interleaved
+Explain big endian and little-endian transactions with an example
+What are cacheable transactions?
+What are bufferable transactions?
+How cacheable and bufferable transactions make AXI protocol efficient
+
+->Difficult Questions:
+
+1. Explain AXI Dead lock
+2. How AXI interconnect handles multiple master performing writes to same slave using AWID
+3. How to it ensure that response is routed to the correct master
+4. During read transaction, if AXI Slave issues error response for a transaction, does it require to stop the transaction immediately?

@@ -1,0 +1,62 @@
+
+Unit : AXI_ASGN2_VIP_Coding
+
+
+AXI VIP Coding:
+
+Draw AXI VIP Architecture
+Draw architecture with AXI master VIP connected to AXI Slave VIP
+Explain difference between AXI master and Slave VIP
+Draw architecture with AXI master VIP connected to AXI Slave module
+List down AXI features for which testcases need to be targeted
+Develop tests targeting AXI features
+Burst_len  (test_burst_len)
+Burst_type  (test_burst_type)
+Out of order  (test_out_of_order)
+Multiple writes  (test_multiple_writes)
+Multiple reads (test_multiple_reads)
+Write-reads  (test_write_reads)
+Write to fixed addr    (test_write_fixed_addr)
+Read to a fixed addr
+Write-to-fixed-addr, read, compare
+Locked types
+Protection types
+ 
+Create AXI slave model verification testplan
+Develop AXI VIP template environment for both master and slave
+Code top most module
+AXI slave model
+AXI interface instance
+AXI Clk, rst
+AXI TB program block
+AXI Assertion module
+Option to read testname from command line argument
+Add interface in to common shared class
+Logic to end simulation
+AXI TB program block
+AXI Env instance
+Env new, env run method
+AXI Env
+AXI Master env
+AXI Slave env(only AXI slave is implemented using AXI Slave VIP)
+AXI Master env
+AXI Master BFM
+AXI Monitor
+AXI Generator
+AXI Coverage
+AXI Slave env (Slave VIP)
+AXI Slave BFM
+AXI monitor
+Develop AXI slave model verification testcases
+Code in axi_gen.sv file (AXI Generator)
+Run task
+Case (testname)
+Complex questions:
+
+AXI Advanced testcases
+Tests to check AXI Out of order transaction behavior
+Both Master and Slave models should be updated to support out of order txs
+Tests to check AXI overlapping transaction behavior
+Tests to check AXI interleaved transaction behavior
+Tests to check locked and exclusive transfer behavior
+Tests to check aligned and unaligned transfers behavior

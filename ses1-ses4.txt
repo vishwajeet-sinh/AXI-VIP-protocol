@@ -1,0 +1,1239 @@
+Unit : Ses1-ses4 notes
+
+
+========================
+    SESSION#1 NOTES
+========================
+AXI Protocol:
+1.  Full bus mastering
+    o all teh compoentns connected to the interconnect can act liks masters
+        o which is not possible in AXI based systems.
+
+2.  exclusive txs
+    M1 generates exclusive read request to S2 location (T=100ns)
+        o S2 location is exclusively reserved for M1 during this period
+    If during period, if M2 or any other master, writes to this locaiton of S2, then exclusivity is broken.
+        o When M1 again access S2, S2 will respond with OKAY(normal Okay)
+        o if exclusivity was not broken, it will respond with EX_OKAY (no one changed the location in between)
+    
+    When M1 wants to remove the exclusive access to S2 location, it generates normal write transaction(exclusivity is closed) to the slave location (T=400ns)
+    from 100ns to 400ns, No otehr master should access S2 location.
+
+3. Snoop txs
+    o Cache coherancy
+    o Every SOC has cache(L1, L2), they need to be updated
+        o snoop is feature that ensures that these caches are updated as per main memory content.
+
+4. Same SOC architecture, can have multiple interconnects, each based on different protocol
+    bridge conencts one type of interconnect to anotehr interconnect.
+
+5. What is maximum frequency at which AHB can work?
+    theoretically AHB can work at infinite frequency. why don't we use mobile phone on infinite clock frequncy?
+        o on-chip protocols don't have any frequncy limitation
+        o limitation comes due to the timing closure
+            o STA
+            o When we take teh chip gate level netlist through the Back end flow, we need to close all the setup and hold time violations
+                o as we increase the frequency, we get more and mroe setup violations
+                o setup violation => metastability => chip enters in to unknown state of operation
+                o hence frequency gets limited by the timing closure.
+
+6. APB transaction happens in 2 phases
+    o address phase
+    o data phase
+
+7. AXI transaction happens in 3 phases
+    o address phase
+    o data phase
+    o response phase
+
+8. What will happen in to bank if tehre is no concept of application number?
+    o if each home loan takes 2 month to process
+    o Bank can only process 6 home loans in a year.
+    o By including application number in the whole home loan process, it allows many home loans to be processed at same time.
+        o Same is the concept of ID in AXI protocol/transactions.
+
+9. AXI write
+    o response happens only once
+
+  AXI read
+      o response happens with every read data transfer
+    o multiiple read responses will happen
+
+10. AXI channels
+    o notional concept
+    o AXI interface = 5 channels
+        o channel : grouping of related signals
+        o All the signals required to do write address phase is called as AXI write address channel
+        o All the signals required to do write data phase is called as AXI write data channel
+        o All the signals required to do write response phase is called as AXI write response channel
+
+        o All the signals required to do read address phase is called as AXI read address channel
+        o All the signals required to do read data and response phase is called as AXI read data channel
+            o read data is from S->M
+            o read response is from S->M
+                o hence both the signals can be merged in to single channel.
+
+11. APB
+    o every signals starts with P
+
+    AHB : every signal starts with H
+    AXI : based on the channel to which they belong, they are named with aw/w/b/ar/r
+        o common signals starts with a
+        clk, rst => aclk, arst
+
+12. AXI
+    o how handshaking happens?
+
+13. Write address channel
+    o master : initiating component
+    o slave : receiving component
+    awvalid = 1, awready = 1 at any +edge of clock
+        o master is giving write address information, slave is ready to accept the write address information.
+
+14. Write data channel
+    o master : initiating component
+    o slave : receiving component
+    wvalid = 1, wready = 1 at any +edge of clock
+        o master is giving write data, slave is ready to accept the write data.
+
+15. Write response channel
+    o slave : initiating component
+    o master : receiving component
+    bvalid = 1, bready = 1 at any +edge of clock
+        o slave is giving write response, master is ready to accept the write response.
+
+16. Read address channel
+    o master : initiating component
+    o slave : receiving component
+    arvalid = 1, arready = 1 at any +edge of clock
+        o master is giving read address information, slave is ready to accept the read address information.
+            read address information:
+                araddr
+                arlen
+                arsize
+                arburst
+                arid
+                arprot
+                arcache
+                arlock
+        o by making arready = 1, slave is telling that, I have captured all the read address information. Now since I(slave) have captured all the information, I will intiiate the read data phase.
+                
+17. Read data channel
+    o slave : initiating component
+    o master : receiving component
+    rvalid = 1, rready = 1 at any +edge of clock
+        o slave is giving read data information, master is ready to accept the read data information.
+
+    by assertion valid=1, the initiating components tells that all the singals belonging to this channel are having valid infroamaiton, receiving component will capture all that infomraiton.
+
+18.
+ Length : How many data phases needs to be done in the whole transaction.
+     o master conveys this infomraiton to the slave during the address phase
+ Size : How many bytes transferred in each beat(transfer)
+ ID
+     o Identification signal for each channel
+ Burst type : Incremental, wrap, fixed
+     o INdication to slave how it should do the address incrementing
+    o ex: INCREMENTING
+        Below is example of incrementing transfers
+            AWADDR = 32'h108, 8 bytes/beat, 4 transfers
+            1st transfer to 32'h108
+            2nd transfer to 32'h110
+            3rd transfer to 32'h118
+            4th transfer to 32'h120
+    o FIXED
+        Below is example of incrementing transfers
+            AWADDR = 32'h108, 8 bytes/beat, 4 transfers, FIXEX
+            1st transfer to 32'h108
+            2nd transfer to 32'h108
+            3rd transfer to 32'h108
+            4th transfer to 32'h108
+            Slave internally has FIFO or data shifting mechanism to process the data.
+    o ex: WRAPPING
+        Data transfers happens in terms of boundaries
+            - we need to calculate the boundaries
+                o whenever tx address crosses the upper boundary, the tx address wraps back to lower address of the boundary.
+            - boundaries are multiple of the overall transaction size
+                - for current example, overall tx size(total bytes transferred) = 4*8 = 32 bytes
+                Data boundaries will be : (below number are decimal)
+                    0 to 31
+                    32 to 63
+                    64 to 95
+                    96 to 127
+                    128 to 159
+                    160 to 191
+                    192 to 223
+                    224 to 255
+                    256 to 287
+        Below is example of incrementing transfers
+            AWADDR = 32'h108, 8 bytes/beat, 4 transfers
+            1st transfer to 32'h108
+                o belong to which boundary: 32'h108 = 256+8 = 264
+                o divide 264 with overall tx size = 264%32 = 8 ==> 264-8 = 256(wrap lower address)
+                    o 32'h108(264) belongs to 256(32'h100) to 287 boundary
+            2nd transfer to 32'h110
+                32'h110 => 272 decimal (still it didn't reach the upper boundary)
+            3rd transfer to 32'h118
+                32'h118 => 280 decimal (still it didn't reach the upper boundary)
+            4th transfer to 32'h120
+                32'h120 => 288 decimal (it has crossed the boundary, wrap doesn't allow crossing the boundares, hence 32'h120 it changed to lower boundary address)
+                4th transfer will happen to 32'h100
+
+        why we are doing division(or modulo)?
+            addr = 32'h1234_1210
+            length = 8 beats ( 8 data transfers will happen totally) (AWLEN or ARLEN)
+            size = 8 bytes (AWSIZE or ARSIZE)
+            which boundary does this fall in to?
+                overall tx size = 64
+                0 to 63
+                64 to 127
+                ....  not possible write till 32'h124_1210
+            how to check which boundary it falls in to?
+                32'h1234_1210  convert it to decimal(305402384)
+                    32'h1234_1210%64 = 16(decimal) = 'h10
+                    what is the lower address of this boundary = subtract 16 from the address(lower boundary)
+                        32'h1234_1210 - 'h10 = 32'h1234_1200
+                    lower boundary = 32'h1234_1200
+                    upper boundary = 32'h1234_1200 + 63('h3F) = 32'h1234_123F
+
+            where the 8 transfers will happen to? (assuming little endian mapping)
+                1st transfer : 32'h1234_1210, 8 bytes
+                    wdata = 64'h88997766_11223344;
+                    32'h1234_1210(8'h44), 32'h1234_1211(8'h33), 32'h1234_1212(8'h22), 32'h1234_1213('h11), ....32'h1234_1217(8'h88)
+                    since slave has stored the data till 32'h1234_1217, it automatically incrementas its address to next location = 32'h1234_1218
+                        - master is not involved in this incerment process, slave is intelligent to do this.
+
+                2nd transfer : 32'h1234_1218, 8 bytes
+                    is this address in same boundary or is it crossing to next boundary? same boundary, hence address won't change
+                    wdata = 64'h11223344_55667788;
+                    32'h1234_1218(8'h88), 32'h1234_1219(8'h77), 32'h1234_121A(8'h66), 32'h1234_121B('h55), ....32'h1234_121F(8'h11)
+                    since slave has stored the data till 32'h1234_121F, it automatically incrementas its address to next location = 32'h1234_1220
+
+                3rd transfer : 32'h1234_1220, 8 bytes (don't wrap)
+                    wdata = 64'h11223344_55667788;
+                    32'h1234_1220(8'h88), 32'h1234_1221(8'h77), 32'h1234_1222(8'h66), 32'h1234_1223('h55), ....32'h1234_1227(8'h11)
+
+                4th transfer : 32'h1234_1228, 8 bytes (don't wrap)
+                    wdata = 64'h11223344_55667788;
+                    32'h1234_1228(8'h88), 32'h1234_1229(8'h77), 32'h1234_122A(8'h66), 32'h1234_122B('h55), ....32'h1234_122F(8'h11)
+
+                5th transfer : 32'h1234_1230, 8 bytes (don't wrap)
+                    wdata = 64'h11223344_55667788;
+                    32'h1234_1230(8'h88), 32'h1234_1231(8'h77), 32'h1234_1232(8'h66), 32'h1234_1233('h55), ....32'h1234_1237(8'h11)
+
+                6th transfer : 32'h1234_1238, 8 bytes (don't wrap)
+                    wdata = 64'h11223344_55667788;
+                    32'h1234_1238(8'h88), 32'h1234_1239(8'h77), 32'h1234_123A(8'h66), 32'h1234_1233('h55), ....32'h1234_123F(8'h11)
+                    next transfer = 32'h1234_1240 (which is crossing the wrap boundary => hence it is updated to the lower boundary address value = 32'h1234_1200)
+
+                7th transfer : 32'h1234_1200, 8 bytes (wrap happened), wlast=0
+                    wdata = 64'h11223344_55667788;
+                    32'h1234_1200(8'h88), 32'h1234_1201(8'h77), 32'h1234_1202(8'h66), 32'h1234_1203('h55), ....32'h1234_1207(8'h11)
+
+                8th transfer : 32'h1234_1208 8 bytes (no wrap) , wlast=1 (this is the last beat of the transaction)
+                    wdata = 64'h11223344_55667788;
+                    32'h1234_1208(8'h88), 32'h1234_1209(8'h77), 32'h1234_120A(8'h66), 32'h1234_120B('h55), ....32'h1234_120F(8'h11)
+ Prot
+     o makes the transfer in normal or protected category
+ Lock
+     o exclusive transfers
+    o locked transfers
+        o master is locking a slave location, if some other master tries to access the same slave location, it gets error response.
+    o normal transfers
+ Cache
+     o bufferable, cacheble
+
+19. AXI : AXI3.0, AXI4
+    
+20. write burst transaction
+    APB only support single data transfers(atomic transfers)
+    AXI supports multiple data transfers(atomic transfers)
+        o by issuing one address phase, we are doing multiple data transfers to all the related locations => burst transfers.
+
+21. wstrb : write strobe
+    lets say, we have 64 bit data bus between master to slave.
+        we are only transfering 2 bytes in each beat.
+        64 bit => 8 bytes, we are only transfering 2 bytes
+            which locations of 8 bytes are valid?
+                awaddr = 32'h100
+                wstrb = 8'b0011_0000
+                wdata = 64'h12341122_45678910
+            the locations for which strb is high, those data are valid, they will considered by the slave/master
+                which data is valid = 11, 22
+                at 32'h100, 8'h22 will be written
+                at 32'h101, 8'h11 will be written
+    
+    lets say, we have 32 bit data bus between master to slave.
+                awaddr = 32'h100
+                wstrb = 8'b1010_0000
+                wdata = 32'h12341122_45678910
+                    o illegal scenario
+                        AXI requires wdata_size/wstrb_size should be 8 compolsory, anything else illegal.
+
+    lets say, we have 32 bit data bus between master to slave.
+                awaddr = 32'h100
+                wstrb = 4'b1010
+                    o processor don't generate these kind of strobes, they generate continous 1's
+                    valid wstrb = 4'b1100, 4'b0011
+                    not valid wstrb = all other combinations(4'b1001, 4'b0101, 4'b0110, though protocol supports, we don't use them)
+                wdata = 32'h12341122
+                    lets say above is supported
+                        32'h100 => data = 8'h11
+                        32'h101 => data = 8'h12
+
+
+22. AXI has dedicated channels(signals) for write transactions and for read transactions
+    o which allows AXI to do concurrent write and read transactions
+        o this is not possible in AHB, APB
+    o AXI has awaddr and araddr
+        o theoretically possible
+
+23. understnaidng AXI transactions
+AXI  Write Transaction example:
+awaddr = 32’h1000_0000
+awlen    = 5
+    o burst lenght will be awlen+1 = 6 beats will happen
+awburst =  INCR
+awsize = 2
+    o number of bytes per transfer = 2**awsize = 2**2 = 4 bytes/transfer
+
+totally 6 transfer:
+    1st transfer at 32'h1000_0000
+        32'h1000_0000 to 32'h1000_0003
+    2nd transfer at 32'h1000_0004 to 32'h1000_0007
+    3rd transfer at 32'h1000_0008 to 32'h1000_000B
+    4th transfer at 32'h1000_000C to 32'h1000_000F
+    5th transfer at 32'h1000_0010 to 32'h1000_0013
+    6th transfer at 32'h1000_0014 to 32'h1000_0017
+totally how many bytes written form master to slave = 6*4 = 24 bytes (32'h1000_0000 to 32'h1000_0017)
+
+24.
+AXI Read Transaction example:
+Araddr = 32’h1000_F000;
+Arlen = 4
+Arburst = Incr
+Arsize = 2
+
+how many beats = 5
+bytes/beat = 4
+total bytes = 20
+read will happen to 32'h1000_F000 to 32'h1000_F013 (memory locations will be read at these address, data will be given on rdata bus)
+
+25. AXI Channel Handshake dependency
+AXI has 5 channels
+    each channel has valid and ready signals.
+how to improve the efficiency of AXI protocol?
+    o by making sure that ready signal is already asserted, it reduces the handshaking to only 1 clock cycle.
+in that case, we will keep all ready signals always asserted(high)
+    o this is not possible
+        o this is where comes a concept of dependency between channels.
+
+even there is a dependency between valid signals of different channels
+
+these all things gives rise to various combinations of dependency, collectively called as 'AXI channel Handshake dependency'
+
+read transaction handshaking channel dependency:
+    o unless read address phase is completed, rvalid can't be asserted
+
+write transaction handshaking channel dependency:
+    o we can complete the whole data phases even before write address phase has completed
+    o without giving address information, how slave is going to store the data, since it doesn't know the address?
+
+========================
+    SESSION#2 NOTES
+========================
+1. Protocol?
+    o set of guidelines for communication between any two connected components
+
+2. categories
+    o on-chip
+    o peripheral
+
+3. protocol categroization
+    o performance
+    o power consumption
+    o price(~complexity)
+
+4. AXI protocol
+    o give high performance, at high power consumption at higher complexity
+
+5. AXI channels
+    o 5 channels
+        o 3 write channels
+        o 2 read channels
+
+6. All of you are familiar with APB protocol, how AXI differs from APB?
+    o APB has fewer signals(paddr, pwdata, prdata, penable, psel, pready, perror)
+        o it gives less performance
+    o AXI has more signals
+        o these signals essentially help get better performance
+
+7. What is meant by perfromance?
+    o how many bytes can be transfered in given clock cycles?
+    o APB
+        o to do one transfer: 2 clock cycles
+            o one clock cycle for issuing the request
+            o one clock cycle for getting the response
+        o if pwdata is 32 bits wider
+            o 4 bytes wider
+            o to transfer 100 bytes : 25 transactions
+                o APB will require : 50 clock cycles to do 100 bytes transfer
+    o AXI
+        o concept of issuing address phase only once
+        o data phase can be issued multiple times ==> Burst transfer
+        o AXI requires slave to be smart to do the calculations?
+
+8. WHat kind of calculations slave needs to do?
+    o AWADDR = 32'h0000_1000
+    o AWLEN = 5;
+    o AWSIZE = 2;
+    o AWBURST = INCR;
+    how the slave is going to analyze this transaction?
+
+    how many transfers will happens = 6
+        o number of beats = 6
+    how many bytes are transfered per beat = 2**AWSIZE = 2**2 = 4
+    totally how many bytes are transfered in whole transaction = beats*bytes_per_beat = 6*4 = 24
+
+    Since it is incrementing transfer:
+        o data is stored in byte addressed manner(every byte has one address)
+        o slave will store the data from 32'h1000 to 32'h1017 locations
+
+    How this will be in APB protocol?
+        o we need to issue address phase 6 times
+
+9. 
+Connection between M->S is it? peripheral connection or on-the-chip connection?
+What is our priority?
+    o Power saving
+    o cost reduction?
+    o High performance?
+
+I want high performance?
+    o AXI
+
+How AXI helps us?
+    o 100 bytes of data => 25 clock cycles
+    o APB needs 50 clock cycles
+
+AXI has concept of cacheble, bufferable transfers
+    o which reduce the transfer latency.
+
+10. what is awlen?
+    o AXI transfer happens in phases
+        o write address phase
+            o during this phase, master gives transaction control informaiton to the slave.
+                o at what address, I am going to start the transfer?
+                o what is the lenght of transaction?
+                o how many bytes I will transfer in each beat?
+                o what type of transaction I am doing(incr or fixed or wrap)?
+                o am I doing locked or normal transfer?
+                o what is the type of protection I am using?
+    
+    o slave handles the remaining data phases based on above control information.
+
+    o Analogy:
+        o I have written a book (there is no email or whatsapp, etc) : go back 30 years
+            o I need to send as a inland cover
+            o book has 100 pages
+            o I give control informaiton to the person to whom I want send this data
+                o 100 inland cover (awlen = 99)
+                o each letter will have : 32 words (awsize = 5)
+            o during address phase: I am only giving control information
+        o during the data phase
+            o I will send totally 100 inland covers
+                o he saves in to his local document => complete book
+
+11. awburst
+    o 2 bit signal
+        2'b00 : Fixed
+            o Slave is always going to store the incoming data in to same location.
+                o AWADDR = 32'h0000_1000
+                o slave will always store data in to above address only.
+                    o data will get corrupted, how it is handled?
+                    o slave has mechansim to shift the data internally.
+                        o Ex: FIFO
+                o This type of burst is suitable for FIFO kind of slave
+                    o we write to the same location, FIFO internally takes care of shifting it
+        2'b01 : Incrementing
+            o Whenever processor writes or reads the memory, it does it incrementing basis
+            o 1st byte is stored to 32'h1000
+            o 2nd byte is stored to 32'h1001
+            .. 
+            o 100th byte is stored to 32'h1000 + 99(decimal)
+        2'b10 : wrapping
+            o cache controller issued transactions
+            o it does it on boundary basis
+        2'b11 : reserved
+
+12Q. you mean when slave is writing its fixed burst and for processor it is incrementing
+    o for processor it is incrementing
+    o Processor knows what type of slave it is talking to
+        o FIFO based or memory or cache based
+
+13. slave memroy is divided in to boundaries?
+    o Wrapping transaction happens in to single bounary only
+
+14. example to understand difference between incrementing and wrapping transactions?
+    o AWADDR = 32'h0000_1008
+    o AWLEN = 3; ==> how many beats = 3+1 = 4 beats
+    o AWSIZE = 2; => how many bytes/transfer = 2**2 = 4
+    o AWBURST = INCR;
+    o total tx size = 4*4 = 16 ('h10 in hexa)
+
+    incrmenting:
+        tx will be from: 32'h1008 to 32'h1017
+        starting address = 32'h1008
+        end address = starting + size - 1 = 32'h1008+'h10-1 = 32'h1017
+
+        4 beats:
+            1st beat: wdata = 32'h49090439
+                Little endian architecture: lowest bytes goes to lower address location
+                'h39 saved to addr = 32'h1008
+                'h04 saved to addr = 32'h1009
+                'h09 saved to addr = 32'h100A
+                'h49 saved to addr = 32'h100B
+    
+            2nd beat: wdata = 32'h12345678
+                'h78 saved to addr = 32'h100C
+                'h56 saved to addr = 32'h100D
+                'h34 saved to addr = 32'h100E
+                'h12 saved to addr = 32'h100F
+    
+            3rd beat: wdata = 32'h84784834
+                'h34 saved to addr = 32'h1010
+                'h48 saved to addr = 32'h1011
+                'h78 saved to addr = 32'h1012
+                'h84 saved to addr = 32'h1013
+    
+            4th beat: wdata = 32'h10203040
+                'h40 saved to addr = 32'h1014
+                'h30 saved to addr = 32'h1015
+                'h20 saved to addr = 32'h1016
+                'h10 saved to addr = 32'h1017
+    
+
+    wrapping:
+        how does slave know that I am getting a wrapping transaction = awburst = WRAP(2'b10)
+            o slave will understand that, I need to all processing as a wrapping transaction
+            o first slave needs to cacluate wrapping boundaries
+                o why to complicate it so much? ==> it is a necessity for Cache access
+            o How to calculate the wrap boundary?
+                o wrap has lower boundary and a upper boundary
+                o lower boundaries are simply the multiples of overall transaction size.
+                    o overal_tx_size = 16
+                o lower_wrap_boundaries are : 0, 16, 32, 48, 64, ....... any multiple of 16
+                o upper_wrap_boundaries are : 16-1, 32-1, 48-1, 64-1, ....... any multiple of 16-1
+                o 1st wrap boundary = 0 to 15
+                o 2nd wrap boundary = 16 to 31
+                o 3rd wrap boundary = 32 to 47
+                so on
+            o now slave checks, in which wrap boundary does this address fall in to?
+                o 32'h1008 in which wrap boundary? 
+                    o it is simple mathematics
+                    o 'h1008 => 'd4104
+                    o 4104/16 = 256.5(what is the remainder = 8)
+                    o lower boundary = 'h1008 - 8 = 32'h1000
+                    o upper boundary = 32'h100F
+                    o 32'h1008 falls in to {32'h1000 to 32'h100F} range
+        4 beats:
+            1st beat: wdata = 32'h49090439, addr = 32'h1008
+                Little endian architecture: lowest bytes goes to lower address location
+                'h39 saved to addr = 32'h1008
+                'h04 saved to addr = 32'h1009
+                'h09 saved to addr = 32'h100A
+                'h49 saved to addr = 32'h100B
+    
+            2nd beat: wdata = 32'h12345678, addr = 32'h100C
+                'h78 saved to addr = 32'h100C
+                'h56 saved to addr = 32'h100D
+                'h34 saved to addr = 32'h100E
+                'h12 saved to addr = 32'h100F ==> we have reached teh upper limit of the bounary => slave wraps back
+    
+            3rd beat: wdata = 32'h84784834 (in incrementing we continued in to the next address boundary)
+                'h34 saved to addr = 32'h1000
+                'h48 saved to addr = 32'h1001
+                'h78 saved to addr = 32'h1002
+                'h84 saved to addr = 32'h1003
+    
+            4th beat: wdata = 32'h10203040
+                'h40 saved to addr = 32'h1004
+                'h30 saved to addr = 32'h1005
+                'h20 saved to addr = 32'h1006
+                'h10 saved to addr = 32'h1007
+
+15. where wrap transactions are used?
+    o Processor wants to fetch some data at address @1020
+    o 1st it checks if Cache has this location
+        o why not get directly from main memory?
+        o cache : results in lower latency access
+            o if cache has it, data will be available in 2 clock cycles(ex)
+            o if we need to get from main memroy, it may take 10 clock cycles
+    o where is Wrap involved this?
+        o If Processor access location @1020, that location is not present in the Cache
+        o There is a cache controller, which will fetch data from main memory, keeps that data in to L1/L2 Cache
+        o Cache controller gets this data as a one chunk of data(wrap boundary)
+
+    o Analogy:
+        o we are constructing a house
+        o 32 bags of cement(~32 bytes of data)
+            o one go to local cement shop and get from there
+            o one go to cement factory and get from there
+        o assume anotehr item, which is rarely purchased?
+            o what is the chance of finding it in local shop?
+                o less chances
+            o we must approach main factory and get from there
+        o Where is wrap coming in to picture?
+            o 32 bags of cement
+            o went to local shop
+            o shop don't have cement bags
+                o you call main factory and get the bags?
+                o shop own calls main factory and get the bags, then gives you?
+                    o shop owner : cache controller
+                    o shop : cache
+                    o cememt bag : byte
+                    o you : processor
+                    o main factory: main memory
+                o will shop owner order: 32 bags or one load of cement?
+                    o one load of cement => one complete wrap boundary
+                    o one load is ordered(not just 32 bags)
+                        o assumption: if customer purchased 32 bags today, he may come back for more bags tomorrow
+                        o shop owner gets 512 bags instead of 32 bags => 512 is like one boundary
+                o how much should shop owner order?
+                    o that measure is called as 'boundary'
+                    o memories are always undersood as boundaries
+                    o in case of wrap, boundaries are multiple of tx size.
+    o tx cache controller issues to the main memory is AXI Wrapping read tx
+        o range: 32'h1000 to 32'h1039 (this depends) ==> 64 bytes is the tx size
+
+16Q. will there be no latency issues for cache controller?/
+    o there will be latecy issues, but it can't be avoided
+
+16. example to understand difference between incrementing and wrapping transactions?
+    o AWADDR = 32'h0000_100B
+    o AWLEN = 6; ==> how many beats = 6+1 = 7 beats
+    o AWSIZE = 3; => how many bytes/transfer = 2**3 = 8
+    o AWBURST = WRAP;
+    o total tx size = 7*8 = 56
+
+    1st boundary range = 0 to 55
+    2nd boundary range = 56 to 111
+    3rd boundary range = 112 to 167
+    so on
+
+    in which boundary, does 32'h100B falls in to?
+        Decimal = 4096+11 = 4107
+        4107%56 = 73.33928 => ignore fractional part => 73
+        73*56 = 4088 (lower boundary, since it is purely divisble by 56)
+        what is the range = 4088 to 4143
+        convert back to hexa = 32'hFF8 to 32'h102F
+
+    1st beat happens @32'h100B
+        o is it aligned or unalinged? 32'h100B is not divisble by 8(2**AWSIZE) => hence it is unaliged
+        wdata = 64'h1234567890abcdef;
+            32'h100B : falls in boundary of 32'h1008 to 32'h100F
+            location 32'h1008, 9, A will not be written at all, since we are indicating to start write from 32'h100B
+
+        wdata = 64'h12 34 56 78 90 ab cd ef
+        address=    OF OE OD OC 0B 0A 09 08
+
+        only 5 bytes will be written: ===> This kind of transfers are called as unalinged transfers
+            90 to 32'h100B
+            78 to 32'h100C
+            56 to 32'h100D
+            34 to 32'h100E
+            12 to 32'h100F
+
+    2nd beat happens @32'h1010
+        o is it aligned or unalinged? 32'h100B is not divisble by 8(2**AWSIZE) => hence it is unaliged
+        wdata = 64'h98 76 54 32 10 98 76 51;
+                    17 16 15 14 13 12 11 10
+        all 8 bytes will be written: 
+            51 to 32'h1010
+            76 to 32'h1011
+            98 to 32'h1012
+            10 to 32'h1013
+            32 to 32'h1014
+            54 to 32'h1015
+            76 to 32'h1016
+            98 to 32'h1017
+
+    3rd beat happens @32'h1018
+        last address of this beat = 32'h101F
+
+    4th beat happens @32'h1020
+        last address of this beat = 32'h1027
+
+    5th beat happens @32'h1028
+        last address of this beat = 32'h102F
+
+    6th beat happens @32'hFF8
+        last address of this beat = 32'hFFF
+
+    7th beat happens @32'h1000
+        last address of this beat = 32'h1007
+
+    will there be 8th beat? No => since AWLEN = 6 => 7 beats only
+        o wrap cacluaitons automatically work in such a manner that all addresses in boundary will be written
+
+    Above is an example of Wrapping and unlainged transfer
+
+17. aligned trnasfer
+    addr%(2**awsize) == 0 ==> aligned transfer
+    addr%(2**awsize) != 0 ==> unaligned transfer
+        o only the 1st beat will be unaligned
+        o next beat onwards, transfers automatically gets aligned
+
+========================
+    SESSION#3 NOTES
+========================
+revision:
+1. axi basics
+2. axi channels
+3. how handshaking works in AXI
+4. different signals
+    o awaddr
+    o awlen
+    o awsize
+    o awprot
+    o awburst
+    o awlock
+    o awid
+    o awcache
+    o awvalid
+    o awready
+
+
+questions:
+1. why 5 set of handshaking signals are required?
+    o why can't it be done with one set of handshaking signals
+    o There are 5 channels in AXI interface
+        o all these channels can work independently
+            o they have different transactions happening on them, hence they require 5 set of handshaking signals
+
+2. Why Wrap burst is required? what if this feature is not there in AXI?
+    o If Wrap is not supported, then Cache controller to memory access can't be implemented using AXI protocol.
+        o this access require Wrapping nature of access.
+        o This will become a limitation if Cache controller to memory access can't be implemented
+            o AXI will lose its advantage
+        analogy:
+            o Buy a laptop, but you can't watch movies on that.
+
+3. Why we need ID in AXI channels?
+    o AWID, WID, BID, ARID, RID
+    o why not just one ID?
+        o 5 channels in AXI can handle 5 different transactions at the same time in worst case scenario.
+        o to track these 5 different transactions, we need 5 different IDs
+    Analogy:
+        o Bank : home loan
+        o home loan
+            o Application                ==> Write address channel
+            o Document submission        ==> Write data channel
+            o saction of the loan        ==> Write response channel
+            ex: 21/July/2021
+                you went to bank to submit home loan application
+                    is there any restriction for other person in submitting documents for his home loan on same day?
+                        o no restriction
+                o it means, on same day, same time, you can be submitting application, 2nd person can be submitting documents, 3rd person(who applied long back), his loan might also get sanctioned
+                    o How bank is differenting these 3 people?
+                        o Application ID => Every applicant has an applicantion ID.
+                        o Though out one person home loan process, his refenrece will always be with respect to the same application number.
+            o 3 different channels will use 3 different IDs for support 3 unique transactions happening on them.
+                o If AWID, WID and BID were not there, then we can't do 3 unique transactions at same time.
+
+4. ID is a very important concept in AXI protocol
+    o This same concept of ID(tag, thread, ID) is used in every advanced protocol
+        o PCIe, OCP, AXI ==> these protocols use the concept of ID
+    o ID allows us to do multiple transactions concurrently.
+        o ex: because bank allots different application number to each applicant, bank can support any number(theoretically any numbers) of home loans at same time
+            o if there was no applicantion number concept, then bank can only process one loan at a time.
+    o ID is differenting factor between the protocols that support out of order, overalling and interleaved transactions compared to protocols which don't support these features.
+        o AXI supports out_of_order, overlapping and interleaved transactions only because it has concept of AWID,WID, BID as part of its signal list.
+        o APB and AHB don't support out_of_order, overlapping and interleaved transactions only because they don't have ID signlas in their signal list.
+
+    o If someone asks you whether a protocol support above 3 features?
+        o what should you ask them?
+            o does that protocol has ID signal or Tag signal or thread signal in the signal list? if yes, then supported.
+         
+5. Out of order transactions
+    o ex: bank loan
+        21/July : Person A applied
+        22/July : Person B applied
+            o 29/july : Person B loan got sanctioned
+            o 31/july : Person A loan got sanctioned
+                ==> This is out of order transaction
+                o response coming in different order compared to the order in which request is issued.
+
+    what is the benefit of out of order transactions? what if AXI doesn't support this feature? how it will impact performance?
+        ex: Above bank example
+        o if Person A is taking lot of time submit his documents(1 year)
+        o if out of order tx is not supported, then even if Person B has submitted all his documents within 1 week, he still needs to wait for 1 year.
+            o if out of order is supported, Person B can get loan sacntioned even before person A(this is not possible in protocols without ID signal)
+                exception, we can suspend existing tx, then do a new tx
+
+    how Out of order txs are implemented in Testbenches?
+        o These are implemented using fork join_none concept
+            o join_none ensures that we don't need to wait.
+
+
+6. Any feature
+    o what is the feature?
+    o what is the benefit of the feature?
+    o how feature is implemented in the testbench or design?
+
+7. Overlapping txs
+    o there is a very thin line difference between overlapping and out of order
+    o While transaction is happening, we initate anotehr tx without waiting for tx A to complete.
+
+    what if AXI doesn't support Overlapping tx feature?
+        o Initial tx if not able to complete quickly, it will become bottleneck for all the remaining txs.
+        o Overlapping tx ensures that, we can do txs without waiting for earlier txs to complete.
+        o Most importantly, Overlapping feature is what is making it possible for us to use all the channels concurrently.
+
+    how Overlapping tx is implemented in AXI based TB or design?
+        o It is implemented using fork join_none
+        o below code is implemneted in BFM or driver
+        Without overlapping feature:
+            task run();
+            forever begin
+                gen2bfm_mb.get(tx);
+                drive_tx(tx);
+            end
+            endtask
+
+        With overlapping feature:
+            task run();
+            forever begin
+                fork
+                begin
+                    gen2bfm_mb.get(tx);
+                    drive_tx(tx);
+                end
+                join_none
+                #100; //some delay, so that all tx don't start on same clock edge
+            end
+            endtask
+
+    How out of order tx differs?
+        o Slave is what initiates the out of order
+        o fork join_none needs to be implemented in Slave 
+            o offcourse master BFM also needs to overlapping
+        o Summary:
+            o for out of order transaction to happen, it must be a overlapping t transaction.
+
+8. Just to get overlapping behavior without out of order behavior
+    o implement fork join_none in master BFM
+    - to get both overlapping and out_of_order behavior
+        o implement fork join_none in both master and slave BFM
+
+9. interleaved txs
+    o Bank example
+        21/July : Person A applied
+        22/July : Person B applied
+        If Person A submits his documents on 25/July, 26/July, 28/July
+        If Person B submits his documents on 24/July, 25/July, 27/July
+        Both of them are submitting documents in interleaved manner.
+    o What is interleaved tx?
+        o data phases of different txs happening in interleaved manner
+    o Why is it required?
+        o It helps utilize the AXI bus to best efficiecny
+        o if interleaved is not there, then, there will be lot of time, where bus is not utilized properly.
+    
+    o How to implement?
+        o In case of read txs, slave BFM needs to implement join_none to get interleaved behavior in driving data phases
+        o In case of write txs, master BFM needs to implement join_none to get interleaved behavior in driving data phases
+        o for interleaved tx to work, overlapping tx is compolsory.
+
+10. AXI architecture diagram
+    o how many masters: 3
+    o how many slaves: 4
+    o lets take a scenario, where Master#1 and #2 are doing tx to Slave#2 with same ID.
+
+11. Aligned transaction and unalinged txs?
+    o Aligned tx
+        o transaction aligned w.r.t the beat transfer size bounary.
+    
+    ex:
+        o AWSIZE = 2 => Beat transfer size = 2**2 = 4
+            o then Any tx done in multiple of 4 becomes aligned tx.
+            AWADDR = 32'h100 is a aligned tx, becomes 32'h100 is divisble by 4 (2**2)
+            From a binary number perspective, when does number become divisible by 4?
+                o last 2 bits of the binary number should be 00.
+            From a hexa number perspective, when does number become divisible by 4?
+                o last character should be either 0, 4, 8, or C => then it is divisible by 4
+
+        o AWSIZE = 3 => 
+            o Beat transfer size = 2**3 = 8
+                o number of bytes transferred in each beat of the transaction
+            o then Any tx done in multiple of 8 becomes aligned tx.
+            AWADDR = 32'h100 is a aligned tx, since 32'h100 is divisble by 8
+            From a binary number perspective, when does a number become divisible by 8?
+                o last 3 bits of the binary number should be 000.
+            From a hexa number perspective, when does number become divisible by 8?
+                o last character should be either 0, or 8 => then it is divisible by 8
+            o is AWADDR = 32'h103 is is aligned when AWSIZE=3?
+                o No, sine AWADDR doesn't end with either 0 or 8, hence uanlinged
+            o is AWADDR = 32'h118 is is aligned when AWSIZE=3?
+                o Yes, sine AWADDR ends with either 8, hence alinged
+
+12. AHB and APB don't support unalinged transfers
+    o only AXI supports unalinged transfer
+    o what is the benefit of unalinged transfers?
+        o many times we have a requirement where we don't want to write all the locaiton of mmeory row.
+            o AXI allows me to start accessing from an odd location(a location which is not aligned w.r.t my transdfer size)
+
+13. What is meant by byte addressed and word addressed memory?
+    byte addressed memory?
+        o each byte of the memory will have unique address.
+        o ex: if memory is 512 bytes
+            then to access this memory we need 0 to 511 addresses => byte addressed.
+    word(32 bits) addressed memory?
+        o each word of the memory will have unique address.
+        o ex: if memory is 512 bytes => 128 words
+            then to access this memory we need 0 to 127 addresses => word addressed.
+            0 to 3 bytes are stored in to address=0
+            4 to 7 bytes are stored in to address=1, so on
+    AXI protocol by default is implemented to be Byte addressed only
+
+
+14. DDR access will be word addressed
+
+15. Smaller Transfers on wider bus ==> Narrow transfers
+    Bus is 64 bits
+    But I am doing only 32 bit data transfer in each beat
+
+    - 1st beat:
+        wdata[63:32] are the valid bits since address is starting at 0x04
+    - 2nd beat:
+        wdata[31:0] are the valid bits since address is starting at 0x08
+    - 3rd beat:
+        wdata[63:32] are the valid bits since address is starting at 0x0C
+    - 4th beat:
+        wdata[31:0] are the valid bits since address is starting at 0x0C
+
+16. wrap
+1st bounary: 0 to F(15d)
+2nd bounary: 10 to 1F(31d)
+
+0x04 falls in to 1st bounary
+
+16. Write strobe
+    o Useful when we are doing narrow transfers
+    o it is good for master to tell whhich positions of the data bus are valid bytes
+        o master uses WSTRB to indicate which positions are valid
+
+addr = 32'h100
+WDATA = 64’h1234_5678_9ABC_DEF0;
+WSTRB = 8'1100_0000
+What are the valid data bytes in above wdata?
+    12, 34
+    34 will be written to 32'h100
+    12 will be written to 32'h101
+
+next beat:
+WDATA = 64’h1234_5678_9ABC_DEF0;
+WSTRB = 8'b0000_0011
+What addr this will happen to?
+    - 32'h102
+    @102, data=F0
+    @103, data=DE
+    remaining 6 bytes are invalid
+
+next beat:
+WDATA = 64'hAABB_CCDD_EEFF_0011;
+WSTRB = 8'b0000_1100
+What addr this will happen to?
+    - 32'h104
+    @104, data=FF
+    @104, data=EE
+    remaining 6 bytes are invalid
+above pattern continues.
+
+17. read channels don't have any cocnept of strobe, it purely on byte position basis w.r.t address issued.
+
+========================
+    SESSION#4 NOTES
+========================
+revision:
+1. Narrow transfers
+2. Wstrb
+3. wrapping and incrementing transfers
+4. ID
+5. Out of order, overlapping, interleaved
+
+Agenda:
+1. AWPROT
+2. AWCACHE
+3. AWLOCK
+4. Channel handshaking dependency
+5. 4KB boundary concept in AXI slaves
+
+Notes:
+1. AWPROT
+    o issued by the master to the slave
+    o master is indicating what type of protection level with which tx is being done.
+        o if slave needs priveleged access, and master is doing Unprevileged access, then slave will issue a error response.
+            o some masters have privelege to access a slave, others don't have.
+                o those masters if they try to access, they will get error reponse
+    o previleged access or non-previleged access
+        o hdfcbank.com
+            o Anyone can login and see the pages on website
+        o hdfcbank.com/personal_account_details
+            o not everyone can see these details. Only the specific person can see that. This can be previleged access to that master.
+    o secure access or non-secure access
+        o master generating secure access or non-secure access
+        o some slaves may compolsorily require secure access.
+    o data access or instruction access
+        o instruction
+            o When we boot a processor, it fetches the instrucitons and executes those instrucitons.
+                o when processor tries to fetch instrucitons, it is called as instruciton access.
+        o processor will write to the memory and read from memory
+            o data access
+
+2. AWCACHE
+    o concept which helps improve the transaction efficeincy in AXI protocol
+    o how this improves?
+        o Transaction can be provided with additional attributes called as bufferable tx, cacheble tx.
+    o bufferable transaction?
+        o Without tx buffered by the interconnect, it takes 10 clock cycles to complete the tx(just for ex)
+        o With tx buffered by the interconnect, it takes 4 clock cycles to get the response.
+            o interconnect is taking care of completing the remaining tx
+            o how many clock cycles did we save?
+                o 6 clock cycles
+                o Processor can initiate 2nd tx at 5th clock cycle, which interconnect is completing the 1st tx
+                o earlier case: Processor can initiate 2nd tx at 11th clock cycle.
+        o in shorter time, processor can initiate more txs. => overall performance improves.
+        o what is the drawback?
+            o Interconnect architecture gets more complex, since it needs to take care of completing the tx
+                o it needs dedicated memroy to buffer the tx and then complete the tx.
+                o what if error response happens between interconnect and slave memory?
+                    o There must be mechansim for interconnect to indicate the processor about error scenario.
+                    o Then processor will figure out how to handle that error.
+            o bufferable tx is only supported for Write txs
+                o not possible with read txs?
+        o in what scenarios, bufferable transaction is useful?
+            o when processor wants to write 10KBytes of data to the memory
+                o each txs can transfer 128 bytes 
+                o totally how many txs: 80
+            o Without bufferable, what happens?
+                o transferring overall 80 txs will take : 80*10 = 800 clock cycles
+            o With bufferable, what happens?
+                o transferring is given to interconnect
+                    o interconnect provides response to the master, without waiting for slave response
+                    o processor will issue next tx as soon as it gets response from interconnect
+                o overall time : 80*4 = 320 clock cycles
+    o cacheable transaction?
+        o cacheble? is it possible to cache
+        o while discussing Wrapping transactions, we discussed the path between processor and main memory
+            o Processor -> L1_Cache -> L2_Cache -> Cache_Controller -> main_memory
+                o Processor issues a read tx to araddr = 32'h1000
+                o Processor needs to decide whether this location is a cacheble location or non-cacheble location?
+                    o should this location be part of cache or not part of cache?
+                    o assume that, it should be part of cache.
+                        o Processor, awcache[1] = 1
+                            o we are doing read tx, 
+                                o if 32'h1000 is not part of the cache, then allocate a location for this address in the cache.
+                                    o since this location is not part of the cache, Cache controller will go and fetch the data from main memory
+                                    o it will update this data in the cache.
+                        o Check happens in both L1_Cache and L2_Cache, is this @1000 locaiton present?
+                            o if present, no need to get data from main emmory, else we need to get.
+            o for non-cacheable txs, the access path is directly from processor to main memory.
+        analogy:
+            o I am constructing a house, I need
+                o 32 cement bags
+                    o I will require this frequently
+                    o this should availble in local shop => so that I can go directly to the shop and purchase.
+                    o Cement bag is a cachble adderess location
+                o some fancy decoration item
+                    o it is one time requirement, I may not need it repetedely
+                    o since this won't accessed frequently, I will not keep this address in Cache(neither in L1 or L2)
+                    o I will directly place order to the factory
+            o what is difference in both the cases?
+                o cement bags from local shop : 2 hours I receive
+                o fancy item from main factory : 2 days I receive
+                    o I am Okay with this.
+            o L1_cache: SHop next to my house
+                o 12rs
+            o L2_cache: super market
+                o 10rs
+            o main memory: main factory
+                o 8rs
+        benefit of cacheble txs?
+            o once I make some address as a cacheble address, that address is very quick to access
+                o 20 clock cycles without being part of cache memory, now will only take 5 clock cycles if part of cache.
+            o application, embedded systems drivers decide whether some address should be a cacheable address or non-cacheable address.
+
+    what is the benefit of bufferable and cacheble?
+        o they helps reduce the access latency
+            o bufferable helps by completing response in shorter time
+            o cacheable helps by getting data form local cache emmroy
+        o summary:
+            o if we are running one application, without bufferable and cacheble concept, it may take 5 minutes to load
+                o whereas by using concept of cacheble and bufferable, it make take 1 minute to load
+
+    Read allocate?
+        o @1000 address, we want it to be part of cache
+        o but right now, it is not part of cache
+            o AXI gives a flexbitlity where we can decide when to make it part of cache
+                o during write?
+                    o write_allocate bit = 1
+                o during read?
+                    o read_allocate bit = 1
+
+    why can't we keep cache very big, then we don't need to worry about allocation, we will everything in cache?
+        o why is it not done?
+        o analogy:
+            o relaicne super market: 5000 SFT
+            o local kiran shop : 200 SFT
+        o Cache is implemented usign SRAM memory, which is among the costliest memory to manafacture because of number of transsitors it required
+            o main memory is cheap(ex: DDR) to manafacture
+            o Due to this reason, Cache is always very small memory
+                L1_Cache: 32Kb
+                L2_Cache: 128Kb to 512Kb
+                DDR : 16GB
+    
+
+    what is the catch(what is the burden due to this)?
+        o in bufferable: interconnect gets complex => as complexity increases, the cost increases.
+        o in cacheble: We need to keep L1 and L2 Cache => the cost increases.
+            o Summary: We are getting better performance at the cost of increased price of chip.
+
+    Bufferable:
+        o only supported for Write txs
+        o logically not possible for read txs, read data must be provided by the main slave only
+
+3. AWLOCK
+    o Master can issue a transaction to the slave with 3 types of lock
+        o Normal access
+        o Exclusive access
+        o Locked access
+    o Exclusive access
+        o Master is doing Exclusive access to the slave
+            o that slave location gets reserved for that master till the time we remove the exclusivity
+        o ex:
+            #100ns, M1 issued a exclusive read tx S1 at addr=32'h2000
+            #300ns, M1 issued a non-exclusive read tx to S1 at addr=32'h2000
+                o During this #100 to #300 time period, that slave location is exclusively reserved for M1 only, other masters should not access that location during this period.
+
+            why it should be complicated so much, what is the purpose?
+                o Reason is simple, in most of the cases, exclusive access is used for Read-Modify-Write (RMW) kind of transactions.
+                    o While M1 initates RMW to the S1 at some location, we don't want any other master to access that location or update that location.
+                        o if some other master accesses, that location value is getting updated, it may result in unwated behavior.
+                o how to avoid this?
+                    o create exclusive behavior
+                    o lock the location to the M1, so that interconnect won't allow other master to access that slave locaiton during this lock period.
+                        o exclusive behavior is not that harsh, interconnect will allow other master to access
+                            o Slave will give OKAY response to the M1, indicating that some other master has accessed me while you are doing exclusive transfer.
+                            o if no other master accessed during this exclusive period, Slave gives EXCL_OKAY response, indicating that, no other master accessed this location, everything is good.
+
+    o Exclusive or lock is scrict?
+        o Lock : Other master tx is blocked at interconnect level itself, 
+            o since interconnect knows that M1 is doing locked transfer to S1 locaiton(specific address only), interconnect won't allow other master to acccess that speicifc address(I am not saying here complete slave address range)
+        o Exclusive
+            o #100ns, M1 issued a exclusive read tx S1 at addr=32'h2000
+                o M1 gets the data by #150ns
+                o Modifies the data
+                o initiates normal write(non-exclusive) at #300
+                    o now that slave locaiton exclusivity is not there.
+
+4. What is 'Reserved' signaficance in VLSI or any protocol or any specification?
+    o Design development or protocol development happens in mutliple stages
+        o new version comes with new features
+        o when one version is developed, they purposefully keep few things as reserved(not used in curretn version), but can be used in later version.
+    o AXI3
+        o ARLOCK=2'b11 is reserved value, it has no signaficance in AXI3 protocol
+        o When AXI4 is relased, they may want to use ARLOCK=2'b11 for some required in that version
+                
+
+5. RRESP, BRESP
+    RRESP: Read response
+    BRESP: Write response
+        o Response signal is used to indicate the status of overall tx
+        o did tx complete successfully or is there any issue?
+
+    00 : OKAY
+    01 : EX_OKAY
+    10 : SLV_ERR
+    11 : DEC_ERR
+
+6. Slave error
+    overrun
+        o FIFO or slave is full, we are writing to the FIFO => slave will give error response
+    underrun
+        o FIFO or slave is empty, we are reading from the FIFO => slave will give error response
+
+    unsupported transfer size attempted
+        o lets say, slave can give 4 bytes per beat, but master is issuing ARSIZE=3 => which slave won't be able to support
+            o how does slave indicate that I can do it?
+                o Slave error
+
+    timeout condition in the slave
+        o #100, Master initiated read tx to Slave
+            o Till #1000, master didn't get any response.
+            o SLave has concept where, it can issue timeout based slave error
+
+7. Decode Error
+    o post office
+    o We send a post to 515999 pincode
+        o Lets say this pincode doesn't exist
+        o I sent a post to 515999 pincode, what will happen?
+            o post will returned to us, saying decode error(wrong address)
+                o from where we will get this response?
+                    o post office(~AXI interconnect)
+8. M1 is reading S1
+    o Burst lenght=8
+    o 1st beat itself we got RRESP=SLV_ERR
+        o even though we got SLV_ERR, slave should still complete all the remaining 7 beats of the transaction.
+
+9. Read transaction response
+    o gets response multiple times
+        o one response for every beat
+            o If arlen=8, response comes 9 times in read tx
+
+10. Wrtie transaction response
+    o gets response only time, i.e in the last phase
+        o If awlen=8, response comes only once, that is, after all write data phases are completed.
+
+11. interconnect
+    o connects mutliple masters to mutliple slaves
+    o what happens if SOC architecture don't have interconnect?
+        o It will require dedicated 1-1 conneciton between each master and slave, which makes SOC connections very complex
+    
+12. interconnect architecture
+    o interconnect at one level is like a multiple slaves and multiple masters
+        o interconnect logic is made up of multiplexros, decoder and arbiters
+
+13. Low power interface signals
+    o Power consumption is a very important aspect of every SOC
+        o we want minimal power consumption
+    o how to reduce power consumption?
+        o power consumption
+            o static power consumption
+                o leakage current 
+            o dynamic power consumption
+                o due to the chip activity, txs happening, clock running
+    o Our focus, here is to reduce this dynamic power consumption
+        o If some component is not required to be accessed, then put it in low power state
+        o how to tell to the compoentn that you go to low power state?
+            o AXI provides signals which can be used to do this low power transaction handshaking.
+    o AXI4 is not providing any signals to put the slave in to low power state
+        o but it has signals to make it exit from low power state
+    
+14. clock is not generated by master or not by slave also
+    o it is generated by some clock source
+    o clock and reset are both inputs to master and slave
+
+15.  4KB address boundary?
+    how this number is related to AXI?
+
+    AXI slave is generally understood as 4KB boundary spaces
+
+16. VIP
+    o Verification IP
+        o Reduces TB development effort
+    o ex:
+        o Qualcomm snapdragon project
+            o If they develop TB for every block from scratch in the SOC => it may take 5 years for them to complete overall verification
+            o They take VIP from different teams or different companies => Now overall verification can be completed in 6 months time.
+
+

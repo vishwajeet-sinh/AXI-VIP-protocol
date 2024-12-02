@@ -1,0 +1,61 @@
+Unit : AXI INTERVIEW NOTES
+
+
+    - AXI3.0 Verification IP Development and validation using AXI slave VIP
+        o Description: what is AXI VIP?
+            - As part of this, I have developed master and slave VIP for AXI3.0 protocol. I have validated master VIP using slave VIP. VIP refers to Verification IP, used in setting up testbench wherever we have AXI interface. AXI VIP has various componenents BFM, Generator to mimick the AXI design interface behavior. It has monitor to monitor the AXI interface transaction and pass the txs to upper layers. I was responsbile for developing AXI BFM, Monitor and coverage model.
+        o How it was developed?
+            - It was developed using SV. It has an env class, which instantiates sub components like BFM, Generator, Monitor and coverage
+            - Tx class developed to accommodate the AXI transaction phases
+        o where it is used?
+            - We validated it using slave VIP. it can be used in any verification wehre we need to mimick teh AXI interface beahvior
+            - AXI VIP also has passive behavior, where we can only use it as a monitor and coverage block by masking BFM and generator
+
+class axi_env;
+bit is_active_passive;
+function new(bit is_active_passive);
+    mon = new();
+    cov = new();
+if (is_active_passive == 1) begin
+    bfm = new();
+    gen = new();
+end
+endfunction
+endclass
+
+    - how AXI VIP architecture looks like?
+    - what all scenarios are developed?
+        note, we are not verifyinf any design in this case. We are only making sure that, VIP supports all the features that AXI protocol is supposed to. Our tests are targeted towards generating txs for these features and making sure AXI SLave responds to those txs as expected.  
+
+
+3. AXI protocol and AXI VIP complex aspects
+    - what is out of order tx?
+    - what is overlapping tx?
+    - what is interleaved tx?
+    - what is wrap tx?
+    - what is cacheble tx?
+        o RA=1
+            o Allocate element in Cache only when read txs are performed to the cacheble locations
+        o WA=1
+            o Allocate element in Cache only when write txs are performed to the cacheble locations
+    - what is bufferable tx?
+        o interconnect needs to be updated, it probably needs some memory/registers to store the tx attributes
+    - what is aligned tx?
+        o 
+    - how do we handle different masters generating same ID tx?
+        o Interconnect adds master specific ID
+    - Why AXI has 4KB memory boundary limitation?
+    - what is locked and exclusive transfer?
+CODING:
+    - what updates are required in VIP code to implmement above features?
+
+    - out of order tx implementation?
+        o both master BFM and slave BFM needs to be updated
+        o requests happening in one order, respones happening in different order relative request order
+    - what is overlapping tx?
+        o only master_BFM update is sufficient. Fork, join_none, with some delay after join_none
+    - what is wrap tx?
+        o master BFM?
+            - nothing
+        o slave BFM?
+            - it has to keep updating the last accessed address and whenever it reaches wrap upper boundary, set the address to lower boundary

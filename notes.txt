@@ -1,0 +1,856 @@
+Unit : NOTES
+
+
+####################################
+axi_common.sv
+####################################
+class axi_common;
+static mailbox gen2bfm = new();
+static mailbox mon2cov = new();
+static mailbox mon2ref = new();
+static string testname;
+static int num_matches, num_mismatches;
+static virtual axi_intf vif;
+endclass
+enum bit [1:0] {
+    FIXED=2'b00,
+    INCR=2'b01,
+    WRAP=2'b10,
+    RSVD_BURST_T=2'b11
+} burst_type_t;
+
+enum bit [1:0] {
+    NORMAL=2'b00,
+    EXCL=2'b01,
+    LOCKED=2'b10,
+    RSVD_LOCK_T=2'b11
+} lock_t;
+
+####################################
+axi_tx.sv
+####################################
+class axi_tx;
+rand bit [31:0] addr;
+rand bit [31:0] addr_t;
+rand bit [3:0] id;
+rand bit [31:0] dataQ[$];
+rand bit [3:0] strbQ[$];
+rand bit wr_rd;
+rand bit [1:0] burst_type;
+rand bit [2:0] burst_size;
+rand bit [3:0] burst_len;
+rand bit [1:0] lock;
+rand bit [3:0] cache;
+rand bit [2:0] prot;
+rand bit qos;
+rand bit region;
+     bit [1:0] resp;
+
+//constraints
+constraint dataQ_c {
+    dataQ.size() == burst_len+1;
+    strbQ.size() == burst_len+1;
+}
+
+constraint aligned_c {
+    soft addr%(2**burst_size) == 0;
+}
+
+constraint rsvd_c {
+    burst_type != RSVD_BURST_T; //during testcase development, I will be able to override this constraint
+    soft burst_type == INCR; //during testcase development, I will be able to override this constraint
+    soft burst_size == 2;
+    soft lock == NORMAL;
+    lock != RSVD_LOCK_T;
+    soft cache == 4'b0;
+    soft prot == 3'b0;
+    soft qos == 1'b0;
+    soft region == 1'b0;
+    foreach (strbQ[i]) {
+        soft strbQ[i] == 4'b1111;
+    }
+}
+
+function void print();
+    $display("#########  Printing axi_tx fields  #########");
+    $display(" addr=%h", addr);
+    $display(" dataQ=%p", dataQ);
+    $display(" wr_rd=%h", wr_rd);
+    $display(" burst_type=%h", burst_type);
+    $display(" burst_size=%h", burst_size);
+    $display(" burst_len=%h", burst_len);
+    $display("#########################################");
+endfunction
+endclass
+
+####################################
+axi_intf.sv
+####################################
+interface axi_intf(input logic aclk, arst);
+bit [3:0] awid;
+bit [31:0] awaddr;
+bit [3:0] awlen;
+bit [2:0] awsize;
+bit [1:0] awburst;
+bit [1:0] awlock;
+bit [3:0] awcache;
+bit [2:0] awprot;
+bit awqos;
+bit awregion;
+bit awvalid;
+bit awready;
+bit [3:0] wid;
+bit [31:0] wdata;
+bit [3:0] wstrb;
+bit wlast;
+bit wvalid;
+bit wready;
+bit [3:0] bid;
+bit [1:0] bresp;
+bit bvalid;
+bit bready;
+//read channels
+bit [3:0] arid;
+bit [31:0] araddr;
+bit [3:0] arlen;
+bit [2:0] arsize;
+bit [1:0] arburst;
+bit [1:0] arlock;
+bit [3:0] arcache;
+bit [2:0] arprot;
+bit arqos;
+bit arregion;
+bit arvalid;
+bit arready;
+bit [3:0] rid;
+bit [31:0] rdata;
+bit rlast;
+bit rvalid;
+bit rready;
+bit [1:0] rresp;
+
+clocking master_cb@(posedge aclk);
+default input #0 output #1;
+    //BFM will drive design inputs, exactly 1 TU after the posedge aclk
+    //BFM will sample design outputs, exactly 0 TU before the posedge aclk(just before)
+input aclk, arst;
+output awid;
+output awaddr;
+output awlen;
+output awsize;
+output awburst;
+output awlock;
+output awcache;
+output awprot;
+output awqos;
+output awregion;
+output awvalid;
+input awready;
+output wid;
+output wdata;
+output wstrb;
+output wlast;
+output wvalid;
+input wready;
+input bid;
+input bresp;
+input bvalid;
+output bready;
+//read channels
+output arid;
+output araddr;
+output arlen;
+output arsize;
+output arburst;
+output arlock;
+output arcache;
+output arprot;
+output arqos;
+output arregion;
+output arvalid;
+input arready;
+input rid;
+input rdata;
+input rlast;
+input rvalid;
+output rready;
+input rresp;
+endclocking
+
+clocking monitor_cb@(posedge aclk);
+default input #0; //why no output skew?
+    //sample the design output #1 unit before the postive edge of clock
+input aclk, arst;
+input awid;
+input awaddr;
+input awlen;
+input awsize;
+input awburst;
+input awlock;
+input awcache;
+input awprot;
+input awqos;
+input awregion;
+input awvalid;
+input awready;
+input wid;
+input wdata;
+input wstrb;
+input wlast;
+input wvalid;
+input #1 wready;
+input bid;
+input bresp;
+input #1 bvalid;
+input #1 bready;
+//read channels
+input arid;
+input araddr;
+input arlen;
+input arsize;
+input arburst;
+input arlock;
+input arcache;
+input arprot;
+input arqos;
+input arregion;
+input arvalid;
+input arready;
+input rid;
+input rdata;
+input rlast;
+input rvalid;
+input rready;
+input rresp;
+endclocking
+
+modport master_mp(clocking master_cb);
+modport monitor_mp(clocking monitor_cb);
+endinterface
+`include "axi_slave.sv"
+`include "axi_intf.sv"
+`include "axi_tx.sv"
+`include "axi_common.sv"
+`include "axi_bfm.sv"
+`include "axi_gen.sv"
+`include "axi_mon.sv"
+`include "axi_cov.sv"
+`include "axi_ref.sv"
+`include "axi_env.sv"
+
+####################################
+top.sv
+####################################
+module top;
+// clk, rst declaration
+reg clk, rst;
+
+// axi_env instantiation
+axi_env env;
+
+// Interface instantiation
+axi_intf pif(clk, rst);
+
+// DUT instantiation(axi_slave)
+axi_slave dut(
+.aclk(pif.aclk), 
+.arst(pif.arst),
+.awid(pif.awid),
+.awaddr(pif.awaddr),
+.awlen(pif.awlen),
+.awsize(pif.awsize),
+.awburst(pif.awburst),
+.awlock(pif.awlock),
+.awcache(pif.awcache),
+.awprot(pif.awprot),
+.awqos(pif.awqos),
+.awregion(pif.awregion),
+.awvalid(pif.awvalid),
+.awready(pif.awready),
+.wid(pif.wid),
+.wdata(pif.wdata),
+.wstrb(pif.wstrb),
+.wlast(pif.wlast),
+.wvalid(pif.wvalid),
+.wready(pif.wready),
+.bid(pif.bid),
+.bresp(pif.bresp),
+.bvalid(pif.bvalid),
+.bready(pif.bready),
+.arid(pif.arid),
+.araddr(pif.araddr),
+.arlen(pif.arlen),
+.arsize(pif.arsize),
+.arburst(pif.arburst),
+.arlock(pif.arlock),
+.arcache(pif.arcache),
+.arprot(pif.arprot),
+.arqos(pif.arqos),
+.arregion(pif.arregion),
+.arvalid(pif.arvalid),
+.arready(pif.arready),
+.rid(pif.rid),
+.rdata(pif.rdata),
+.rlast(pif.rlast),
+.rvalid(pif.rvalid),
+.rready(pif.rready),
+.rresp(pif.rresp)
+);
+
+// clk, rst generation
+initial begin
+    clk = 0;
+    forever #5 clk = ~clk;
+end
+
+initial begin
+    $value$plusargs("testname=%s",axi_common::testname);
+    $display("running %s test", axi_common::testname);
+    axi_common::vif = pif; //put interface handle in common database
+    rst = 1;
+    repeat(2) @(posedge clk);
+    rst = 0;
+    //starting the env after reset
+    env = new();
+    env.run();
+end
+
+// Assertion module instantiation
+
+// logic to decide when to end simulation
+initial begin
+    #2500;
+    $display("num_matches=%0d",axi_common::num_matches);
+    $display("num_mismatches=%0d",axi_common::num_mismatches);
+    if (axi_common::num_matches != 0 && axi_common::num_mismatches == 0) begin
+        $display("#######################");
+        $display("%s passed", axi_common::testname);
+        $display("#######################");
+    end
+    else begin
+        $display("#######################");
+        $display("%s failed", axi_common::testname);
+        $display("#######################");
+    end
+    $finish;
+end
+
+endmodule
+
+####################################
+axi_env.sv
+####################################
+class axi_env;
+axi_gen gen;
+axi_bfm bfm;
+axi_mon mon;
+axi_cov cov;
+axi_ref ref_i;
+
+function new();
+    gen = new();
+    bfm = new();
+    mon = new();
+    cov = new();
+    ref_i = new();
+endfunction
+
+    task run();
+        $display("axi_env::run");
+        fork
+            gen.run();
+            bfm.run();
+            mon.run();
+            cov.run();
+            ref_i.run();
+        join
+    endtask
+endclass
+
+####################################
+axi_gen.sv
+####################################
+class axi_gen;
+axi_tx tx, tx_t;
+axi_tx tx_tA[4:0];
+task run();
+    $display("axi_gen::run");
+    case (axi_common::testname)
+        //write a location with random data, read back same location
+        "axi_wr_rd_test": begin
+            //wr tx
+            tx = new();
+            tx.randomize() with {tx.wr_rd == 1;}; //Write
+            axi_common::gen2bfm.put(tx);
+            tx_t = new tx;
+            //rd tx
+            tx = new();
+            tx.randomize() with {tx.wr_rd == 0; tx.addr == tx_t.addr; tx.burst_len == tx_t.burst_len;}; //Write
+            axi_common::gen2bfm.put(tx);
+        end
+        "axi_5_wr_5_rd_test": begin
+            //wr tx
+            for (int i = 0; i < 5; i++) begin
+                tx = new();
+                tx.randomize() with {tx.wr_rd == 1;}; //Write
+                axi_common::gen2bfm.put(tx);
+                tx_tA[i] = new tx;
+            end
+            //rd tx
+            for (int i = 0; i < 5; i++) begin
+                tx = new();
+                tx.randomize() with {tx.wr_rd == 0; tx.addr == tx_tA[i].addr; tx.burst_len == tx_tA[i].burst_len;}; //Write
+                axi_common::gen2bfm.put(tx);
+            end
+        end
+    endcase
+endtask
+endclass
+
+
+####################################
+axi_bfm.sv
+####################################
+class axi_bfm;
+virtual axi_intf.master_mp vif;
+axi_tx tx;
+task run();
+    $display("axi_bfm::run");
+    vif = axi_common::vif;
+    forever begin
+        axi_common::gen2bfm.get(tx);
+        tx.print();
+        drive_tx(tx);
+    end
+endtask
+
+task drive_tx(axi_tx tx);
+if (tx.wr_rd == 0) begin
+    read_addr(tx);
+    read_data(tx);
+end
+if (tx.wr_rd == 1) begin
+    write_addr(tx);
+    write_data(tx);
+    write_resp(tx);
+end
+endtask
+
+task write_addr(axi_tx tx);
+    //$display("doing write_addr phase");
+    @(vif.master_cb);
+    vif.master_cb.awaddr <= tx.addr;
+    vif.master_cb.awburst <= tx.burst_type;
+    vif.master_cb.awid <= tx.id;
+    vif.master_cb.awlen <= tx.burst_len;
+    vif.master_cb.awsize <= tx.burst_size;
+    vif.master_cb.awlock <= tx.lock;
+    vif.master_cb.awcache <= tx.cache;
+    vif.master_cb.awprot <= tx.prot;
+    vif.master_cb.awqos <= tx.qos;
+    vif.master_cb.awregion <= tx.region;
+    vif.master_cb.awvalid <= 1;
+    wait (vif.master_cb.awready == 1); //simulation is stuck here
+    @(vif.master_cb);
+    vif.master_cb.awvalid <= 0;
+    vif.master_cb.awaddr <= 0;
+    vif.master_cb.awburst <= 0;
+    vif.master_cb.awid <= 0;
+    vif.master_cb.awlen <= 0;
+    vif.master_cb.awsize <= 0;
+    vif.master_cb.awlock <= 0;
+    vif.master_cb.awcache <= 0;
+    vif.master_cb.awprot <= 0;
+    vif.master_cb.awqos <= 0;
+    vif.master_cb.awregion <= 0;
+endtask
+task write_data(axi_tx tx);
+    //$display("doing write_data phase");
+    for (int i = 0; i < tx.burst_len+1; i++) begin
+        @(vif.master_cb);
+        vif.master_cb.wdata <= tx.dataQ.pop_front();
+        vif.master_cb.wstrb <= tx.strbQ.pop_front();
+        vif.master_cb.wid <= tx.id;
+        vif.master_cb.wvalid <= 1;
+        if (i == tx.burst_len) vif.master_cb.wlast <= 1;
+        wait (vif.master_cb.wready == 1);
+    end
+    @(vif.master_cb);
+    vif.master_cb.wdata <= 0;
+    vif.master_cb.wid <= 0;
+    vif.master_cb.wvalid <= 0;
+    vif.master_cb.wlast <= 0;
+    vif.master_cb.wstrb <= 0;
+endtask
+task write_resp(axi_tx tx);
+bit bvalid_f = 0;
+    //$display("doing write_resp phase");
+    while (bvalid_f == 0) begin
+        @(vif.master_cb);
+        if (vif.master_cb.bvalid == 1) begin
+            vif.master_cb.bready <= 1;
+            bvalid_f = 1; //to exit while loop
+        end
+    end
+    @(vif.master_cb);
+    vif.master_cb.bready <= 0;
+    bvalid_f = 0;
+endtask
+
+task read_addr(axi_tx tx);
+    //$display("doing read_addr phase");
+    @(vif.master_cb);
+    vif.master_cb.araddr <= tx.addr;
+    vif.master_cb.arburst <= tx.burst_type;
+    vif.master_cb.arid <= tx.id;
+    vif.master_cb.arlen <= tx.burst_len;
+    vif.master_cb.arsize <= tx.burst_size;
+    vif.master_cb.arlock <= tx.lock;
+    vif.master_cb.arcache <= tx.cache;
+    vif.master_cb.arprot <= tx.prot;
+    vif.master_cb.arqos <= tx.qos;
+    vif.master_cb.arregion <= tx.region;
+    vif.master_cb.arvalid <= 1;
+    wait (vif.master_cb.arready == 1); //simulation is stuck here
+    @(vif.master_cb);
+    vif.master_cb.arvalid <= 0;
+    vif.master_cb.araddr <= 0;
+    vif.master_cb.arburst <= 0;
+    vif.master_cb.arid <= 0;
+    vif.master_cb.arlen <= 0;
+    vif.master_cb.arsize <= 0;
+    vif.master_cb.arlock <= 0;
+    vif.master_cb.arcache <= 0;
+    vif.master_cb.arprot <= 0;
+    vif.master_cb.arqos <= 0;
+    vif.master_cb.arregion <= 0;
+endtask
+
+//master should collect the read data and drive rready = 1, this all should be in a loop
+task read_data(axi_tx tx);
+bit rvalid_f = 0;
+for (int j = 0; j <= tx.burst_len+1; j++) begin
+    rvalid_f = 0; //set this to 0
+    //$display("doing read_data phase");
+    while (rvalid_f == 0) begin
+        @(vif.master_cb);
+        if (vif.master_cb.rvalid == 1) begin
+            vif.master_cb.rready <= 1;
+            rvalid_f = 1; //to exit while loop
+        end
+    end
+end
+    @(vif.master_cb);
+    vif.master_cb.rready <= 0;
+    rvalid_f = 0;
+endtask
+endclass
+
+####################################
+axi_mon.sv
+####################################
+class axi_mon;
+virtual axi_intf.monitor_mp vif;
+axi_tx tx;
+task run();
+    $display("axi_mon::run");
+    vif = axi_common::vif;
+    forever begin
+        @(vif.monitor_cb);
+        //check if any of the channels information is valid
+        //write address channel information is valid?
+        if (vif.monitor_cb.awvalid && vif.monitor_cb.awready) begin
+            //a new tx is starting, collect this new tx
+            tx = new();
+            tx.addr = vif.monitor_cb.awaddr;
+            tx.addr_t = vif.monitor_cb.araddr;
+            tx.id = vif.monitor_cb.awid;
+            tx.burst_type = vif.monitor_cb.awburst;
+            tx.burst_len = vif.monitor_cb.awlen;
+            tx.burst_size = vif.monitor_cb.awsize;
+            tx.prot = vif.monitor_cb.awprot;
+            tx.lock = vif.monitor_cb.awlock;
+            tx.cache = vif.monitor_cb.awcache;
+            tx.wr_rd = 1;
+        end
+        //write data channel information is valid
+        if (vif.monitor_cb.wvalid && vif.monitor_cb.wready) begin
+            tx.dataQ.push_back(vif.monitor_cb.wdata);
+            tx.strbQ.push_back(vif.monitor_cb.wstrb);
+        end
+        if (vif.monitor_cb.bvalid && vif.monitor_cb.bready) begin
+            tx.resp = vif.monitor_cb.bresp;
+            //transaction has completed
+            axi_common::mon2cov.put(tx);
+            axi_common::mon2ref.put(tx);
+            $display("axi_mon:: Printing write tx");
+            tx.print();
+        end
+        //read address channel information is valid?
+        if (vif.monitor_cb.arvalid && vif.monitor_cb.arready) begin
+            //a new tx is starting, collect this new tx
+            tx = new();
+            tx.addr = vif.monitor_cb.araddr;
+            tx.addr_t = vif.monitor_cb.araddr;
+            tx.id = vif.monitor_cb.arid;
+            tx.burst_type = vif.monitor_cb.arburst;
+            tx.burst_len = vif.monitor_cb.arlen;
+            tx.burst_size = vif.monitor_cb.arsize;
+            tx.prot = vif.monitor_cb.arprot;
+            tx.lock = vif.monitor_cb.arlock;
+            tx.cache = vif.monitor_cb.arcache;
+            tx.wr_rd = 0;
+        end
+        //read data channel information is valid
+        if (vif.monitor_cb.rvalid && vif.monitor_cb.rready) begin
+            tx.dataQ.push_back(vif.monitor_cb.rdata);
+            tx.resp = vif.monitor_cb.rresp;
+            //transaction has completed
+            if (vif.monitor_cb.rlast == 1) begin
+                axi_common::mon2cov.put(tx);
+                axi_common::mon2ref.put(tx);
+                $display("axi_mon:: Printing read tx");
+                tx.print();
+            end
+        end
+    end
+endtask
+endclass
+
+
+####################################
+axi_cov.sv
+####################################
+class axi_cov;
+event axi_e;
+axi_tx tx;
+covergroup axi_cg@(axi_e);
+    ADDR_CP : coverpoint tx.addr {
+        option.auto_bin_max = 8;
+    }
+    LEN_CP : coverpoint tx.burst_len;
+    BURST_CP : coverpoint tx.burst_type;
+    BURST_SIZE_CP : coverpoint tx.burst_size;
+endgroup
+
+function new();
+    axi_cg = new();
+endfunction
+
+task run();
+    $display("axi_cov::run");
+    forever begin
+        axi_common::mon2cov.get(tx);
+        axi_cg.sample();
+    end
+endtask
+endclass
+
+####################################
+axi_slave.sv
+####################################
+module axi_slave(input aclk, input arst, 
+input [3:0] awid,
+input [31:0] awaddr,
+input [3:0] awlen,
+input [2:0] awsize,
+input [1:0] awburst,
+input [1:0] awlock,
+input [3:0] awcache,
+input [2:0] awprot,
+input awqos,
+input awregion,
+input awvalid,
+output reg awready,
+input [3:0] wid,
+input [63:0] wdata,
+input [3:0] wstrb,
+input wlast,
+input wvalid,
+output reg wready,
+output reg [3:0] bid,
+output reg [1:0] bresp,
+output reg bvalid,
+input bready,
+//read channels
+input [3:0] arid,
+input [31:0] araddr,
+input [3:0] arlen,
+input [2:0] arsize,
+input [1:0] arburst,
+input [1:0] arlock,
+input [3:0] arcache,
+input [2:0] arprot,
+input arqos,
+input arregion,
+input arvalid,
+output reg arready,
+output reg [3:0] rid,
+output reg [63:0] rdata,
+output reg rlast,
+output reg rvalid,
+input rready,
+output reg [1:0] rresp);
+
+reg [31:0] awaddr_t;
+reg [3:0] awlen_t;
+reg [2:0] awsize_t;
+reg [1:0] awburst_t;
+reg [31:0] araddr_t;
+reg [3:0] arlen_t;
+reg [2:0] arsize_t;
+reg [1:0] arburst_t;
+reg [7:0] mem[int];
+bit ignore_first_iteration_f = 1;
+
+//basic handshaking
+always @(posedge aclk) begin
+if (arst == 1) begin
+    awready = 0;    
+    wready = 0;
+    bid = 0;
+    bresp = 0;
+    bvalid = 0;
+    arready = 0;
+    rid = 0;
+    rdata = 0;
+    rlast = 0;
+    rvalid = 0;
+    rresp = 0;
+end
+else begin
+    if (awvalid == 1) begin
+        awready = 1;
+        awaddr_t = awaddr;
+        awlen_t = awlen;
+        awsize_t = awsize;
+        awburst_t = awburst;
+    end
+    else begin
+        awready = 0;
+    end
+    if (wvalid == 1) begin
+        wready = 1;
+        store_data_to_mem(wdata);
+        if (wlast == 1) begin
+            do_write_resp(wid);
+        end
+    end
+    else begin
+        wready = 0;
+    end
+    if (arvalid == 1) begin
+        arready = 1;
+        araddr_t = araddr;
+        arlen_t = arlen;
+        arsize_t = arsize;
+        arburst_t = arburst;
+        do_read_data(arid);
+    end
+    else begin
+        arready = 0;
+    end
+end
+end
+
+task store_data_to_mem(input [31:0] data);
+    mem[awaddr_t] = data[7:0];
+    mem[awaddr_t+1] = data[15:8];
+    mem[awaddr_t+2] = data[23:16];
+    mem[awaddr_t+3] = data[31:24];
+    awaddr_t = awaddr_t+4;
+endtask
+
+task do_write_resp(input [3:0] id);
+    @(posedge aclk);
+    bid = id;
+    bresp = 2'b00; //OKAY
+    bvalid = 1;
+    wait (bready == 1);
+    @(posedge aclk);
+    bid = 0;
+    bvalid = 0;
+endtask
+
+task do_read_data(input [3:0] id);
+    ignore_first_iteration_f = 1;
+for (int i = 0; i < arlen_t+1; i++) begin
+    @(posedge aclk);
+    rdata = {
+                mem[araddr_t+3],
+                mem[araddr_t+2],
+                mem[araddr_t+1],
+                mem[araddr_t]
+            };
+    rid = id;
+    rvalid = 1;
+    if (i == arlen_t) rlast = 1;
+    wait (rready == 1);
+    if (ignore_first_iteration_f == 1) begin
+        i = i -1;
+        ignore_first_iteration_f = 0;
+    end
+    araddr_t = araddr_t+4;
+end
+    @(posedge aclk);
+    rdata = 0;
+    rid = 0;
+    rvalid = 0;
+    rlast = 0;
+endtask
+endmodule
+
+####################################
+axi_ref.sv
+####################################
+class axi_ref;
+byte mem[int];
+axi_tx tx;
+
+task run();
+forever begin
+    axi_common::mon2ref.get(tx);
+    if (tx.wr_rd == 1) begin
+        //data will be in tx.dataQ(10)
+        for (int i = 0; i <= tx.burst_len; i++) begin
+            //$display("storing at addr=%h, data=%h", tx.addr, tx.dataQ[i]);
+            mem[tx.addr] = tx.dataQ[i][7:0];
+            mem[tx.addr+1] = tx.dataQ[i][15:8];
+            mem[tx.addr+2] = tx.dataQ[i][23:16];
+            mem[tx.addr+3] = tx.dataQ[i][31:24];
+            tx.addr = tx.addr + 4;
+        end
+    end
+    else begin //tx is a read tx
+        for (int i = 0; i <= tx.burst_len; i++) begin
+            //$display("read at addr=%h", tx.addr);
+            if (
+                mem[tx.addr] == tx.dataQ[i][7:0] &&
+                mem[tx.addr+1] == tx.dataQ[i][15:8] &&
+                mem[tx.addr+2] == tx.dataQ[i][23:16] &&
+                mem[tx.addr+3] == tx.dataQ[i][31:24]
+            ) begin
+                axi_common::num_matches++;
+            end
+            else begin
+                axi_common::num_mismatches++;
+                //$display("mem data = %h", {mem[tx.addr+3], mem[tx.addr+2], mem[tx.addr+1], mem[tx.addr]});
+                //$display("read data = %h", tx.dataQ[i]);
+            end
+            tx.addr = tx.addr + 4;
+        end
+    end
+end
+endtask
+endclass
+
+####################################
+run.do
+####################################
+vlog top.sv
+vsim -novopt top +testname=axi_5_wr_5_rd_test
+#vsim -novopt top +testname=axi_wr_rd_test
+do wave.do
+run -all
+
+

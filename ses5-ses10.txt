@@ -1,0 +1,435 @@
+Unit : Ses5-ses10 notes
+
+
+==========================
+    SESSION#5 NOTES
+==========================
+revision:
+1. 
+awaddr
+awlen
+awsize
+awburst
+    - wrap, incr, fixed
+awid
+awvalid
+awready
+awuser
+
+wdata
+wid
+wstrb
+wlast
+wuser
+
+bresp
+bid
+bvalid
+bready
+buser
+
+2. Advanced level of signals
+awlock
+awprot
+awcache
+
+3. Read channels also have same signals, except for rstrb will not be there.
+araddr
+arlen
+arsize
+arburst
+   - wrap, incr, fixed
+arid
+arvalid
+arready
+aruser
+rdata
+rid
+rlast
+ruser
+rresp
+rid
+rvalid
+rready
+
+arlock
+arprot
+arcache
+
+4. AXI and AHB : how they differ?
+    AXI slave is intelligent
+        we give write address information only once, slave does the calculations.
+            o how many beats will happen?
+            o what address data need to be stored or read from?
+
+    AHB slave is not intelligent
+        everytime we need to give the information
+
+5. how to draw timing diagrams?
+    o awaddr = 32'h150
+      awlen = 3
+      awsize = 2
+      awburst = incr
+      timing diagram.
+
+6. Master can do 3 types of access to the slaves
+    o normal access
+        o multiple masters can access same slave at same time. 
+    o locked access
+        o once M1 has initiated locked access to Slave#1, M2 won't be able to access Slave#1, unless lock has been removed.
+        o S#1 is locked M#1 using locked access
+    o exclusive access
+        o M1 does exclusive access to S#1
+        o During that M2 also access S#1, it breaks the M1 exclusivity to the S#1
+            o to indicate that exclusivity is broken(some one else is accessing me), S#1 will respond OKAY response to M#1
+            o if no other master(M#2) has accessed S1 in the mean time, response will EXOKAY response(no one changed me in between)
+
+    o to restrict this access, AXI provides two possibilities
+        o locked => very stricticly telling that, I won't allow any other master to access the slave
+        o excluse => not strict, but I will inform to M#1 that some other Master has accessed me in the mean time.
+
+    o when we don't want to worry about all this, then we have 'normal' access.
+
+    awlock[1:0]
+        2'b00 : normal access
+        2'b01 : locked access
+        2'b10 : exclusive access
+        2'b11 : reserved
+            o in current protocol, this value has no meaning, it might be used in futehr revision of AXI
+    smae aplies for arlock also
+
+7. M#1 does write address phase to S#1, wtih awlock=2'b10
+    o slave understands that, M#1 wants to do exclusive access to me.
+        o If some otehr master does access to me in the mean time, my exclusivity is broken
+
+8. decode error
+    PINCODE:
+        KTK : 560000 <---> 569000
+            if we send a post to 569500 => this pin code doesn't exist => post office will indicate that pin doesn't exist => decode error.
+
+9.  what iis power down function?
+    o every electornic device require power
+        o power comes through voltage lines
+        o to the chip also, voltage is supplied through voltage lines
+        o for any operation to be possible to the chip, device must be powered up.
+            o if voltage is not supplied to a specific funciton, we try to access that, then we get slave error.
+
+10. what are default slaves
+    o 
+
+11. what is target slave for which we used FIXED type burst?
+    o FIFO
+
+12. targeting normal memories
+    o INCR
+
+13. Cahce memories using Wrapping kind of burst
+    o Cache controller does wrapping access to the main memory
+    o Wrap transfers ensures that transfers happen in boundaries.
+
+14. 
+awaddr = 32'h102 (258 in decimal)
+wdata[63:0] = 8 bytes width
+is it aliged?
+    - informaiton is insufficeint.
+
+aliged or unaligned deicded based on awsize:
+    - awsize = 1 => 32'h102%2**1  = 0 => aligned
+    - awsize = 2 => 32'h102%2**2  = 2 => unaligned
+
+15. AXI 
+    o overlapping transfers
+        o training: 6 months duration
+        o while B1 is happemning
+            o after 2 months if B2 starts ==> overlapping transfers
+    o interleaved transfers
+        o B1, B2 started around same time or some gap
+        o their verilog sessions are happening in interleved manner
+            today : B1
+            tomorrow; B2
+            day after tomorrow: B1
+            so on
+    o out of order transfers
+        o B1 : today, completed after 8 months
+        o B2 : next monht, completed in 6 months
+
+16. awprot, awcache
+
+17. awcache
+    it is related bufferable and cacheable transactions.
+    bufferable transaction:
+        o only for write transactions bufferable is possible
+        o for read, not possible
+
+    concept where, interconnect buffers the txs, interconnect itself responds to the master.
+        o interconnect takes care of completing the transfer to teh actual slave.
+        o it helps reduce the overall latency, so that processor can do some toehr trnasactions.
+
+    awcache[0] = 1 => bufferable write
+    awcache[0] = 0 => non-bufferable write(response must come from actual slave only, interconnect can't provide response) 
+
+    cacheble transactions?
+        o analogy:
+            o you want to purchase a pen
+                o will you go to shop? (shop is called as cache in VLSI terminology)
+                o will you go to pen manufacturing plant? (manufacturing plant is called as main memory)
+            o by getting something from shop, we are able to save the time.    
+        o you wanted to purchase some kind of item(pen costing 5000 INR), which no one generally purchases
+            o shop?
+            o manufacturing plant?
+                o this item not generally used by people, shop won't keep it.
+                o since shop don't have it, we have to get manufacturing plant.
+
+        o pen must be part of shop
+        o 5000 INR pen won't be part of shop
+
+        o cacheble transactions
+            o whether this address correspodning data should be part of cache also.
+    awcache[1] = 1 => cacheable write
+    awcache[1] = 0 => non-cacheable write
+
+==========================
+    SESSION#6 NOTES
+==========================
+1. template env is developed
+2. developed a test to generate AXI tx and print the txs
+
+vif.awid = tx.id;
+vif.awaddr = tx.addr;
+vif.awlen = tx.len;
+vif.awsize = tx.id;
+vif.awburst = tx.id;
+vif.awlock = tx.id;
+vif.awcache = tx.id;
+vif.awprot = tx.id;
+vif.awqos = tx.id;
+vif.awregion = tx.id;
+vif.awuser = tx.id;
+vif.awvalid = tx.id;
+vif.awready = tx.id;
+
+3.
+:map 5 @a
+@a recoding is mapped to 5
+105 : 10 times repeat function
+65 : 6 times
+
+==========================
+    SESSION#7 NOTES
+==========================
+revision:
+1. we have created TB in such a way that, each compoent of TB is doing specific work
+    o axi_gen.sv
+        o get the testname, as per that generating txs
+    o axi_bfm.sv
+        o get the tx from mailbox
+        o drive tx to the interface
+        o get the response from slave
+    o axi_mon.sv
+        o monitoring the interface
+        o collect the txs
+        o give those txs to other componets like coverage, reference model
+    o axi_cov.sv
+        o get tx from monitor
+        o do the coverage sampling
+    o axi_env.sv
+        o holds all the components
+    o axi_inf.sv
+        o connecting TB with the DUT
+        o if there is no interface concept, it is not possible to connect class to a module
+            o class don't have ports
+            o module has ports
+            o interface is that connects both of them.
+
+2. all the component functionality is implemented in run task
+
+3. AXI Slave
+    Memory with AXI interface
+    when write happens, what we do?
+        o store the data in to memory.
+    when read happens, what we do?
+        o memory returns the data
+
+4. given this waveform, what should we check to say that, it is working fine?
+    o number of writes and number of reads should be '5'
+    o write addresses are matching read addresses
+        where all writes happened?    
+            - 32'h6c8a_d0f7
+            - 32'h0a12_7ab8
+            - 32'h1013_27b6
+            - 32'h1422_4882
+            - 32'h8E09_6515
+        where all read happened?    
+            - 32'h6C8A_d0f7
+            - 32'h0a12_7ab8
+            - 32'h1013_27b6
+            - 32'h1422_4882
+            - 32'h8e09_6515
+    o write data should match read data?
+        what data is written?
+            - 1st transaction(awlen = 8 => lenght=9)
+                32'h4d6e_54b8
+                32'hf4e4_39b9
+                32'he1ff_e47c
+                32'h04cb_2d24
+                32'hb112_51bb
+                32'hb4da_8c0e
+                32'hc555_86d6
+                32'he96b_a7e8
+                32'hbf9a_82f4
+            - 1st read tx, are we getting same data?
+                arlen is matching awlen
+                arsize is matching awsize
+                32'h4d6e_54b8
+                32'hf4e4_39b9
+                32'he1ff_e47c
+                32'h04cb_2d24
+                32'hb112_51bb
+                32'hb4da_8c0e
+                32'hc555_86d6
+                32'he96b_a7e8
+                32'h4d6e_54b8
+
+==========================
+    SESSION#8 NOTES
+==========================
+Agenda:
+1. Resolve the monitor issue ==> Resolved
+    o we should collect all the txs properly
+2. Reference model ==> Implemented
+    o implement checks
+3. end the testcase automatically ==> Implemented
+    o right now usign fixed delay
+4. assertions
+    o ARM AXI asseriton list
+
+5. add more coverpoints 
+6. add more testcases to get 100% coverage ==> Pending
+
+
+Notes:
+1. Reference model
+    o when write happens, store data in to memory
+    o when read happens, get data from reference model memory and compare the data.
+
+2. assertions
+    - handshaking check
+    - when write address phase is happening, all address channel signals should have known values
+    - when write data phase is happening, all data channel signals should have known values
+    - when write resp phase is happening, all resp channel signals should have known values
+    - same for read channels
+    - based on burst_len, number of beats should happen ==> refer to repeation operator in assertions
+
+3. AXI VIP Files
+    axi_bfm.sv
+    axi_gen.sv
+    axi_mon.sv
+    axi_cov.sv
+    axi_slave.sv
+    axi_ref.sv
+    axi_env.sv
+    axi_assertion.sv
+    axi_common.sv
+
+==========================
+    SESSION#9 NOTES
+==========================
+https://www.edaplayground.com/x/ctz6
+
+Agenda:
+1. Advanced aspects
+    - wrapping transfers
+    - fixed transfer
+    - out of order txs
+    - overlapping txs
+    - interleaved txs
+    - unaligend
+    - locked
+    - exclusive
+
+2. How to implement AXI Slave VIP
+    o exisitng TB
+        o Master VIP connected to AXI Slave module
+    o another possibiluty
+        o Master VIP can be connected to Slave VIP
+
+3. Slave VIP
+    o Slave responder
+    o SLave monitor => Same as master monitor
+
+4. wrapping transfers
+read_addr = a392_a5e8
+len = 4 => 5
+size = 2 => 4
+tx_size = 20
+offset = 2744296936 => 16
+lower = 2744296920 => A392_A5D8
+upper = 2744296939 => A392_A5EB
+
+- It is slave's responsbility to implement wrap concept
+    o It is not master responsbility
+    o SLave needs to calculate, when to wrap the address
+    o during read address or write address phase, we are checking the wrap lower and upper address boundaries.
+        o whenever tx address reaches this upper boundary, we are wrapping it back
+
+5. fixed transfer
+- slave will not increment the address.
+- Slave will keep pushing data in to a FIFO
+- Slave will keep reading data from teh FIFO
+    o hence slave will do access from the fixed location only
+
+6. Implementing below features
+    - out of order txs
+    - overlapping txs
+    - interleaved txs
+  - updating env in such a way that, it doesn't impact exisitn features or exisitng TB
+  - to implement above features, updates are required in both master BFM and slave model also
+      o master BFM should support capability of driving multiple txs 'concurrently'
+    o slave model should have capability of responding out of order
+
+==========================
+    SESSION#10 NOTES
+==========================
+1. After completing AXI-VIP, all testcases ==> mugging up the code
+    50% of students can't do APB VIP
+
+2. DMA controller project
+    o TB coding, command list coding, coverage closure, regression
+
+    FIFO : Setup SV TB => 80% people can't do this.
+    Full adder => Setup SV TB
+        o tx class for FUll adder
+        o BFM, Gen
+
+3. Homework
+    o Take any simple design(SPI controller, FIFO, 8X1 Mux, etc)
+        o setup a SV TB from scratch by tomorrow, 9AM, submit TB code.
+
+4. advanced AXI features
+    o out of order, overlapping, interleaved
+
+5. How interleaving and out of order implemented
+    - AXI_BFM.sv
+        o fork join_none to get the concept of concurrent driving of tx
+        o While implementing the write data beats(write_data_phase), generate a random delay, delay the data phase by that much delay
+        o Write response can also be delayed by using delay variable
+    - AXI_SLAVE.sv
+        o Declare array of varibales to store the tx address phase information
+            o since multiple txs happen concurrently, we need multiple varibales to store this information.
+        o While implementing the read data beats(read_data_phase), generate a random delay, delay the data phase by that much delay
+        o while write_resp_phase, read_data_phase using fork join_none
+    - interleaving txs
+        o type of txs where data phases of different txs are getting interleaved with eachother
+    - out of order txs
+        o type of txs where data phase and response phase happens in different order compared the order in which address phase is issued.
+
+6. what can cause simulation to hang?
+    o 0 delay forever loop
+    o wait statement not completing
+
+    o lets pin point the issue files?
+        o axi_gen.sv => No
+        o axi_tx.sv => No
+        o axi_bfm.sv => Yes
+        o axi_mon.sv => No
+        o axi_slave.sv => Yes

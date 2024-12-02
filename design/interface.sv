@@ -1,0 +1,40 @@
+interface axi_intf (input logic aclk, input logic rstn);
+    bit [`ADDR_WIDTH-1 : 0] awaddr;
+    bit [`ID_WIDTH-1 : 0] awid;
+    bit [2:0] awsize;
+    bit [3:0] awlen;
+    bit [1:0] awprot;
+    bit [1:0] awburst;
+    bit [3:0] awcache;
+    bit [1:0] awlock;
+    bit awvalid;
+    bit awready;
+    bit [`DATA_WIDTH-1 : 0] wdata;
+    bit [3:0] wstrb;
+    bit [`ID_WIDTH-1 : 0] wid;
+    bit wvalid;
+    bit wready;
+    bit wlast;
+    bit [1:0] bresp;
+    bit [`ID_WIDTH-1 : 0] bid;
+    bit bvalid;
+    bit bready;
+    //READ
+    bit [`ADDR_WIDTH-1 : 0] araddr;
+    bit [`ID_WIDTH-1 : 0] arid;
+    bit [2:0] arsize;
+    bit [3:0] arlen;
+    bit [1:0] arprot;
+    bit [1:0] arburst;
+    bit [3:0] arcache;
+    bit [1:0] arlock;
+    bit arvalid;
+    bit arready;
+    bit [`DATA_WIDTH-1 : 0] rdata;
+    bit [`ID_WIDTH-1 : 0] rid;
+    bit rvalid;
+    bit rready;
+    bit rlast;
+    bit [1:0] rresp;
+    //clocking block, modport is assingment
+endinterface
